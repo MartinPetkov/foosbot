@@ -5,9 +5,9 @@
 #   foosbot Games - List currently scheduled games
 #   foosbot Start game - Start a new game, always added to the end of the queue
 #   foosbot Find people - Ask for people to play in the next game
-#   foosbot I'm in | Join | Join next game - Claim a spot in the next game
-#   foosbot Abandon | Abandon next game - Free up your spot in the next game
-#   foosbot Cancel | Cancel next game - Cancel the next game
+#   foosbot I'm in | Join game - Claim a spot in the next game
+#   foosbot Abandon game - Free up your spot in the next game
+#   foosbot Cancel game - Cancel the next game
 #   foosbot Find people for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
 #   foosbot Abandon game <n> - Free up your spot in the nth game
@@ -240,15 +240,12 @@ module.exports = (robot) ->
     robot.respond /join game (\d+)/i, joinGameRespond
     robot.respond /abandon game (\d+)/i, abandonGameRespond
     robot.respond /cancel game (\d+)/i, cancelGameRespond
-  
+
     robot.respond /start game/i, startGameRespond
     robot.respond /find people$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
-    robot.respond /join$/i, joinNextGameRespond
-    robot.respond /join next game/i, joinNextGameRespond
-    robot.respond /abandon$/i, abandonNextGameRespond
-    robot.respond /abandon next game/i, abandonNextGameRespond
-    robot.respond /cancel$/i, cancelNextGameRespond
-    robot.respond /cancel next game/i, cancelNextGameRespond
+    robot.respond /join game$/i, joinNextGameRespond
+    robot.respond /abandon game$/i, abandonNextGameRespond
+    robot.respond /cancel game$/i, cancelNextGameRespond
 
     robot.respond /finish game: +(\w+) +and +(\w+) +vs\.? +(\w+) +and +(\w+), +final +score +(\d+) *- *(\d+)$/i, finishGameRespond
