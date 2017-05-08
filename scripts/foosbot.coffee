@@ -6,10 +6,12 @@
 #   foosbot Start game - Start a new game, always added to the end of the queue
 #   foosbot Find people - Ask for people to play in the next game
 #   foosbot I'm in | Join game - Claim a spot in the next game
+#   foosbot Add <player_name> - Add a player that isn't on LCB to the next game
 #   foosbot Abandon game - Free up your spot in the next game
 #   foosbot Cancel game - Cancel the next game
 #   foosbot Find people for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
+#   foosbot Add <player_name> to game <n> - Add a player that isn't on LCB to the nth game
 #   foosbot Abandon game <n> - Free up your spot in the nth game
 #   foosbot Cancel game <n> - Cancel the nth game
 #   foosbot Finish game: <team1_p1> and <team1_p2> vs. <team2_p1> and <team2_p2>, final score <team1_score>-<team2_score> - Finish the next game and record the results
@@ -78,16 +80,16 @@ findPeopleForGameRespond = (res, n) ->
     if currentPlayers.length <= 0
         res.send "No spots left in #{gameStr}"
         return
-    
+
     # TODO: Ask @all who's up for a game, and announce who's currently part of the nth game
     spotsLeft = 4 - currentPlayers.length
     currentPlayers = currentPlayers.join(', ')
-    
+
     res.send "@all Who's up for a game? #{gameStr} has #{spotsLeft} spots, current players are #{currentPlayers}"
 
 
-joinGameRespond = (res, n) ->
-    newPlayer = res.message.user.name
+joinGameRespond = (res, n, playerName) ->
+    newPlayer = if isUndefined(playerName) then res.message.user.name else playerName
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     any = if !any then false else true
     if isInvalidIndex(n)
@@ -95,13 +97,13 @@ joinGameRespond = (res, n) ->
         return
 
     gameStr = if n == 0 then "Next game" else "Game #{n}"
-    
+
     game = games[n]
     if game.indexOf(newPlayer) >= 0
         res.send "You're already part of that game!"
         return
 
-    # TODO: Add yourself to the nth game
+    # Add yourself to the nth game
     for player, index in game
         if player == '_'
             game[index] = newPlayer
@@ -112,10 +114,10 @@ joinGameRespond = (res, n) ->
 
             saveGames()
             gamesRespond(res)
-            
+
             return
 
-    # TODO: Cannot join if full
+    # Cannot join if full
     res.send "No spots #{gameStr}"
 
 
@@ -131,7 +133,7 @@ abandonGameRespond = (res, n) ->
     if playerIndex < 0
         res.send "You're not part of Game #{n}"
         return
-    
+
     game[playerIndex] = '_'
     saveGames()
 
@@ -185,7 +187,7 @@ finishGameRespond = (res) ->
 
     team1_p1 = res.match[1].trim()
     team1_p2 = res.match[2].trim()
-    
+
     team2_p1 = res.match[3].trim()
     team2_p2 = res.match[4].trim()
 
@@ -232,12 +234,28 @@ finishGameRespond = (res) ->
 
     res.send "Result saved"
 
+addToGameRespond = (res, n) ->
+    # Add a player to the nth game
+    n = if isUndefined(n) then parseInt(res.match[2].trim(), 10) else n
+    playerName = res.match[1].trim()
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
+
+    joinGameRespond(res, n, playerName)
+
+addToNextGameRespond = (res) ->
+    # Add yourself to the next game
+    # Cannot join if full
+    addToGameRespond(res, 0)
+
 
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
     robot.respond /find people for game (\d+)/i, findPeopleForGameRespond
     robot.respond /join game (\d+)/i, joinGameRespond
+    robot.respond /add (\w+) to game (\d+)/i, addToGameRespond
     robot.respond /abandon game (\d+)/i, abandonGameRespond
     robot.respond /cancel game (\d+)/i, cancelGameRespond
 
@@ -245,6 +263,7 @@ module.exports = (robot) ->
     robot.respond /find people$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
+    robot.respond /add (\w+)$/i, addToNextGameRespond
     robot.respond /abandon game$/i, abandonNextGameRespond
     robot.respond /cancel game$/i, cancelNextGameRespond
 
