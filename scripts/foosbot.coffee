@@ -6,12 +6,14 @@
 #   foosbot Start game - Start a new game, always added to the end of the queue
 #   foosbot Find people - Ask for people to play in the next game
 #   foosbot I'm in | Join game - Claim a spot in the next game
-#   foosbot Add <player_name> - Add a player that isn't on LCB to the next game
+#   foosbot Add <player_name> - Add a player that may or may not be on LCB to the next game
+#   foosbot Kick <player_name> - Kick a player from the next game
 #   foosbot Abandon game - Free up your spot in the next game
 #   foosbot Cancel game - Cancel the next game
 #   foosbot Find people for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
-#   foosbot Add <player_name> to game <n> - Add a player that isn't on LCB to the nth game
+#   foosbot Add <player_name> to game <n> - Add a player that may or may not be on LCB to the nth game
+#   foosbot Kick <player_name> from game <n> - Kick a player from the nth game
 #   foosbot Abandon game <n> - Free up your spot in the nth game
 #   foosbot Cancel game <n> - Cancel the nth game
 #   foosbot Finish game: <team1_p1> and <team1_p2> vs. <team2_p1> and <team2_p2>, final score <team1_score>-<team2_score> - Finish the next game and record the results
@@ -76,13 +78,13 @@ findPeopleForGameRespond = (res, n) ->
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
     game = games[n]
-    currentPlayers = [player for player in game when player != "_"]
-    if currentPlayers.length <= 0
+    currentPlayers = (player for player in game when player != "_")
+    spotsLeft = 4 - currentPlayers.length
+    if spotsLeft <= 0
         res.send "No spots left in #{gameStr}"
         return
 
-    # TODO: Ask @all who's up for a game, and announce who's currently part of the nth game
-    spotsLeft = 4 - currentPlayers.length
+    # Ask @all who's up for a game, and announce who's currently part of the nth game
     currentPlayers = currentPlayers.join(', ')
 
     res.send "@all Who's up for a game? #{gameStr} has #{spotsLeft} spots, current players are #{currentPlayers}"
@@ -121,8 +123,8 @@ joinGameRespond = (res, n, playerName) ->
     res.send "No spots #{gameStr}"
 
 
-abandonGameRespond = (res, n) ->
-    senderPlayer = res.message.user.name
+abandonGameRespond = (res, n, playerName) ->
+    senderPlayer = if isUndefined(playerName) then res.message.user.name else playerName
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
         res.send "Invalid game index #{n}"
@@ -131,7 +133,7 @@ abandonGameRespond = (res, n) ->
     game = games[n]
     playerIndex = game.indexOf(senderPlayer)
     if playerIndex < 0
-        res.send "You're not part of Game #{n}"
+        res.send "#{senderPlayer} is not part of Game #{n}"
         return
 
     game[playerIndex] = '_'
@@ -236,11 +238,8 @@ finishGameRespond = (res) ->
 
 addToGameRespond = (res, n) ->
     # Add a player to the nth game
-    n = if isUndefined(n) then parseInt(res.match[2].trim(), 10) else n
     playerName = res.match[1].trim()
-    if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
-        return
+    n = if isUndefined(n) then parseInt(res.match[2].trim(), 10) else n
 
     joinGameRespond(res, n, playerName)
 
@@ -250,12 +249,25 @@ addToNextGameRespond = (res) ->
     addToGameRespond(res, 0)
 
 
+kickFromGameRespond = (res, n) ->
+    # Kick a player from the nth game
+    playerName = res.match[1].trim()
+    n = if isUndefined(n) then parseInt(res.match[2].trim(), 10) else n
+
+    abandonGameRespond(res, n, playerName)
+
+kickFromNextGameRespond = (res) ->
+    # Kick a player from the next game
+    kickFromGameRespond(res, 0)
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
     robot.respond /find people for game (\d+)/i, findPeopleForGameRespond
     robot.respond /join game (\d+)/i, joinGameRespond
     robot.respond /add (\w+) to game (\d+)/i, addToGameRespond
+    robot.respond /kick (\w+) from game (\d+)/i, kickFromGameRespond
     robot.respond /abandon game (\d+)/i, abandonGameRespond
     robot.respond /cancel game (\d+)/i, cancelGameRespond
 
@@ -264,6 +276,7 @@ module.exports = (robot) ->
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
     robot.respond /add (\w+)$/i, addToNextGameRespond
+    robot.respond /kick (\w+)$/i, kickFromNextGameRespond
     robot.respond /abandon game$/i, abandonNextGameRespond
     robot.respond /cancel game$/i, cancelNextGameRespond
 
