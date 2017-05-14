@@ -10,12 +10,16 @@
 #   foosbot Kick <player_name> - Kick a player from the next game
 #   foosbot Abandon game - Free up your spot in the next game
 #   foosbot Cancel game - Cancel the next game
+#   foosbot Balance game - Balance the next game based on player ranks
+#   foosbot Shuffle game - Randomly shuffle the players in the next game
 #   foosbot Find people for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
 #   foosbot Add <player_name> to game <n> - Add a player that may or may not be on LCB to the nth game
 #   foosbot Kick <player_name> from game <n> - Kick a player from the nth game
 #   foosbot Abandon game <n> - Free up your spot in the nth game
 #   foosbot Cancel game <n> - Cancel the nth game
+#   foosbot Balance game <n> - Balance the nth game based on player ranks
+#   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
 #   foosbot Finish game <team1_score>-<team2_score> - Finish the next game and record the results
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #
@@ -192,33 +196,71 @@ addColumn = (lines, stats, header, field, formatFunc) ->
       lines[2+index] += "| #{fieldValue}"
 
 
-rankingsRespond = (res) ->
+getRankings = () ->
     # Get the stats for each player
     stats = getStats()
 
     # Add the name and make a sortable array
-    statsArray = []
+    rankings = []
     for player in Object.keys(stats)
         playerStats = stats[player]
         playerStats["name"] = player
-        statsArray.push playerStats
+        rankings.push playerStats
 
     # Sort the players based on rank
-    statsArray.sort(rankSort)
+    rankings.sort(rankSort)
+
+    return rankings
+
+rankingsRespond = (res) ->
+    # Get the player rankings
+    rankings = getRankings()
 
     # Construct the rankings string
-    responseList = new Array(statsArray.length + 2).fill('') # Initialize with empty lines, to add to later
-    addColumn(responseList, statsArray, "", "", ) # Index column
-    addColumn(responseList, statsArray, "Player", "name")
-    addColumn(responseList, statsArray, "Win Percentage", "winPercentage", percentFormat)
-    addColumn(responseList, statsArray, "Games Won", "gamesWon")
-    addColumn(responseList, statsArray, "Games Played", "gamesPlayed")
+    responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
+    addColumn(responseList, rankings, "", "", ) # Index column
+    addColumn(responseList, rankings, "Player", "name")
+    addColumn(responseList, rankings, "Win Percentage", "winPercentage", percentFormat)
+    addColumn(responseList, rankings, "Games Won", "gamesWon")
+    addColumn(responseList, rankings, "Games Played", "gamesPlayed")
     
     res.send responseList.join('\n')
 
+
+getRank = (playerName, rankings) ->
+    for stat, index in rankings
+        if stat["name"] == playerName
+            return index
+
+    return -1
+
+
+balanceSort = (p1, p2) ->
+    if p1["rank"] > p2["rank"]
+        return 1
+    else if p1["rank"] < p2["rank"]
+        return -1
+    return 0
+
 balancePlayers = (game) ->
+    # Get the player rankings
+    rankings = getRankings()
+
     # TODO: Balance based on rank
-    return game
+    playersWithRanks = game.map (player) -> {"name": player, "rank": getRank(player, rankings)}
+    playersWithRanks.sort(balanceSort)
+
+    # Update the game
+    game[0] = playersWithRanks[0]["name"]
+    game[1] = playersWithRanks[2]["name"]
+    game[2] = playersWithRanks[1]["name"]
+    game[3] = playersWithRanks[3]["name"]
+
+shufflePlayers = (game) ->
+    i = game.length
+    while --i
+        j = Math.floor(Math.random() * (i+1))
+        [game[i], game[j]] = [game[j], game[i]] # use pattern matching to swap
 
 joinGameRespond = (res, n, playerName) ->
     newPlayer = if isUndefined(playerName) then res.message.user.name else playerName
@@ -371,6 +413,38 @@ kickFromNextGameRespond = (res) ->
     kickFromGameRespond(res, 0)
 
 
+balanceGameRespond = (res, n) ->
+    n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
+
+    balancePlayers(games[n])
+    saveGames()
+    gamesRespond(res)
+
+    res.send "Game #{n} balanced based on rank"
+
+balanceNextGameRespond = (res) ->
+    balanceGameRespond(res, 0)
+
+
+shuffleGameRespond = (res, n) ->
+    n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
+
+    shufflePlayers(games[n])
+    saveGames()
+    gamesRespond(res)
+
+    res.send "Game #{n} randomly shuffled"
+
+shuffleNextGameRespond = (res) ->
+    shuffleGameRespond(res, 0)
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -380,6 +454,8 @@ module.exports = (robot) ->
     robot.respond /kick (\w+) from game (\d+)/i, kickFromGameRespond
     robot.respond /abandon game (\d+)/i, abandonGameRespond
     robot.respond /cancel game (\d+)/i, cancelGameRespond
+    robot.respond /balance game (\d+)/i, balanceGameRespond
+    robot.respond /shuffle game (\d+)/i, shuffleGameRespond
 
     robot.respond /start game/i, startGameRespond
     robot.respond /find people$/i, findPeopleForNextGameRespond
@@ -389,6 +465,8 @@ module.exports = (robot) ->
     robot.respond /kick (\w+)$/i, kickFromNextGameRespond
     robot.respond /abandon game$/i, abandonNextGameRespond
     robot.respond /cancel game$/i, cancelNextGameRespond
+    robot.respond /balance game$/i, balanceNextGameRespond
+    robot.respond /shuffle game$/i, shuffleNextGameRespond
 
     robot.respond /finish game +(\d) *- *(\d)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
