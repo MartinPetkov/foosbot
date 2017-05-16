@@ -143,27 +143,6 @@ getStats = () ->
 
     return stats
 
-
-rankSort = (p1, p2) ->
-    # Try sorting by winPercentage first
-    if p1['winPercentage'] > p2['winPercentage']
-        return -1
-    else if p1['winPercentage'] < p2['winPercentage']
-        return 1
-    
-    # If win percentage is the same, sort by games won
-    if p1['gamesWon'] > p2['gamesWon']
-        return -1
-    else if p1['gamesWon'] < p2['gamesWon']
-        return 1
-
-    # If games won is the same, sort by games played
-    if p1['gamesPlayed'] >= p2['gamesPlayed']
-        return -1
-    else if p1['gamesPlayed'] < p2['gamesPlayed']
-        return 1
-
-
 noopFormat = (str) -> return "#{str}"
 percentFormat = (str) -> return "#{str}%"
 
@@ -196,6 +175,30 @@ addColumn = (lines, stats, header, field, formatFunc) ->
       lines[2+index] += "| #{fieldValue}"
 
 
+rankSort = (p1, p2) ->
+    # Negative ranks are considered the lowest, so pushed to the end
+    if p1['rank'] < 0
+        return 1
+    if p2['rank'] < 0
+        return -1
+
+    # High ranks are pushed to the front
+    if p1['rank'] > p2['rank']
+        return -1
+    if p1['rank'] < p2['rank']
+        return 1
+
+    # Order by games won next
+    if p1['gamesWon'] > p2['gamesWon']
+        return -1
+    if p1['gamesWon'] < p2['gamesWon']
+        return 1
+
+    # Order by win percentage last
+    if p1['winPercentage'] >= p2['winPercentage']
+        return -1
+    return 1
+
 getRankings = () ->
     # Get the stats for each player
     stats = getStats()
@@ -205,6 +208,7 @@ getRankings = () ->
     for player in Object.keys(stats)
         playerStats = stats[player]
         playerStats["name"] = player
+        playerStats["rank"] = (3 * playerStats["gamesWon"]) + (1 * (playerStats["gamesPlayed"] - playerStats["gamesWon"]))
         rankings.push playerStats
 
     # Sort the players based on rank
@@ -220,6 +224,7 @@ rankingsRespond = (res) ->
     responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
     addColumn(responseList, rankings, "", "", ) # Index column
     addColumn(responseList, rankings, "Player", "name")
+    addColumn(responseList, rankings, "Rank Score", "rank")
     addColumn(responseList, rankings, "Win Percentage", "winPercentage", percentFormat)
     addColumn(responseList, rankings, "Games Won", "gamesWon")
     addColumn(responseList, rankings, "Games Played", "gamesPlayed")
@@ -228,33 +233,26 @@ rankingsRespond = (res) ->
 
 
 getRank = (playerName, rankings) ->
-    for stat, index in rankings
-        if stat["name"] == playerName
-            return index
+    for stat in rankings
+        if stat['name'] == playerName
+            return stat['rank']
 
     return -1
-
-
-balanceSort = (p1, p2) ->
-    if p1["rank"] > p2["rank"]
-        return 1
-    else if p1["rank"] < p2["rank"]
-        return -1
-    return 0
 
 balancePlayers = (game) ->
     # Get the player rankings
     rankings = getRankings()
 
-    # TODO: Balance based on rank
+    # Balance based on rank
     playersWithRanks = game.map (player) -> {"name": player, "rank": getRank(player, rankings)}
-    playersWithRanks.sort(balanceSort)
+    playersWithRanks.sort(rankSort)
 
     # Update the game
+    console.log playersWithRanks
     game[0] = playersWithRanks[0]["name"]
-    game[1] = playersWithRanks[2]["name"]
+    game[1] = playersWithRanks[3]["name"]
     game[2] = playersWithRanks[1]["name"]
-    game[3] = playersWithRanks[3]["name"]
+    game[3] = playersWithRanks[2]["name"]
 
 shufflePlayers = (game) ->
     i = game.length
