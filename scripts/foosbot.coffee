@@ -20,7 +20,7 @@
 #   foosbot Cancel game <n> - Cancel the nth game
 #   foosbot Balance game <n> - Balance the nth game based on player ranks
 #   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
-#   foosbot Finish game <team1_score>-<team2_score> - Finish the next game and record the results
+#   foosbot Finish game <team1_score>-<team2_score>, ... - Finish the next game and record the results (of possibly multiple games)
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #
 # Author:
@@ -261,7 +261,6 @@ balancePlayers = (game) ->
     playersWithRanks.sort(rankSort)
 
     # Update the game
-    console.log playersWithRanks
     game[0] = playersWithRanks[0]["name"]
     game[1] = playersWithRanks[3]["name"]
     game[2] = playersWithRanks[1]["name"]
@@ -366,39 +365,6 @@ cancelNextGameRespond = (res) ->
     cancelGameRespond(res, 0)
 
 
-finishGameRespond = (res) ->
-    if games.length <= 0
-        res.send "No games are being played at the moment"
-        return
-
-    game = games[0]
-    if game.indexOf('_') >= 0
-        res.send "Next game isn't ready to go yet'"
-        return
-
-    # The following is the format for game results
-    result = {
-        'team1': {
-            'player1': game[0].trim().toLowerCase(),
-            'player2': game[1].trim().toLowerCase(),
-            'score': parseInt(res.match[1].trim(), 10)
-        },
-        'team2': {
-            'player1': game[2].trim().toLowerCase(),
-            'player2': game[3].trim().toLowerCase(),
-            'score': parseInt(res.match[2].trim(), 10)
-        }
-    }
-
-    # Record the scores and save them
-    finishedGames.push result
-    saveFinishedGames()
-
-    # Remove the game from the list
-    games.splice(0,1)
-
-    res.send "Result saved"
-
 addToGameRespond = (res, n) ->
     # Add a player to the nth game
     playerName = res.match[1].trim()
@@ -456,6 +422,47 @@ shuffleNextGameRespond = (res) ->
     shuffleGameRespond(res, 0)
 
 
+finishGameRespond = (res) ->
+    if games.length <= 0
+        res.send "No games are being played at the moment"
+        return
+
+    game = games[0]
+    if game.indexOf('_') >= 0
+        res.send "Next game isn't ready to go yet!"
+        return
+
+    results = res.match[1].trim().split(",")
+    for result in results
+        result = result.trim().split('-')
+        t1score = result[0]
+        t2score = result[1]
+
+        # The following is the format for game results
+        resultDetails = {
+            'team1': {
+                'player1': game[0].trim().toLowerCase(),
+                'player2': game[1].trim().toLowerCase(),
+                'score': parseInt(t1score, 10)
+            },
+            'team2': {
+                'player1': game[2].trim().toLowerCase(),
+                'player2': game[3].trim().toLowerCase(),
+                'score': parseInt(t2score, 10)
+            }
+        }
+
+        # Record the scores and save them
+        finishedGames.push resultDetails
+
+    saveFinishedGames()
+
+    # Remove the game from the list
+    games.splice(0,1)
+
+    res.send "Results saved"
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -479,5 +486,5 @@ module.exports = (robot) ->
     robot.respond /balance game$/i, balanceNextGameRespond
     robot.respond /shuffle game$/i, shuffleNextGameRespond
 
-    robot.respond /finish game +(\d) *- *(\d)$/i, finishGameRespond
+    robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
