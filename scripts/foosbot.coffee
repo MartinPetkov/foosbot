@@ -27,6 +27,7 @@
 #   MartinPetkov
 
 fs = require 'fs'
+ts = require 'trueskill'
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
@@ -111,7 +112,9 @@ initOrRetrievePlayerStat = (stats, playerName) ->
     return {
         "gamesPlayed": 0,
         "gamesWon": 0,
-        "winPercentage": 0
+        "winPercentage": 0,
+        "skill": [25.0, 25.0/3.0],
+        "rank": 2
     }
 
 getStats = () ->
@@ -126,20 +129,29 @@ getStats = () ->
         t1score = finishedGame['team1']['score']
         t2score = finishedGame['team2']['score']
 
-        all_players = [t1p1, t1p2, t2p1, t2p2]
-        for player in all_players
+        allPlayers = [t1p1, t1p2, t2p1, t2p2]
+        for player in allPlayers
             stats[player] = initOrRetrievePlayerStat(stats, player)
             stats[player]['gamesPlayed'] += 1
+            stats[player]['rank'] = 2
 
         if t1score > t2score
             stats[t1p1]['gamesWon'] += 1
             stats[t1p2]['gamesWon'] += 1
+            stats[t1p1]['rank'] = 1
+            stats[t1p2]['rank'] = 1
         else if t2score > t1score
             stats[t2p1]['gamesWon'] += 1
             stats[t2p2]['gamesWon'] += 1
+            stats[t2p1]['rank'] = 1
+            stats[t2p2]['rank'] = 1
+
+        ts.AdjustPlayers([stats[t1p1], stats[t1p2], stats[t2p1], stats[t2p2]])
     
     for player in Object.keys(stats)
+        stats[player]['name'] = player
         stats[player]['winPercentage'] = round((stats[player]['gamesWon'] / stats[player]['gamesPlayed']) * 100, 2)
+        stats[player]['trueskill'] = stats[player]['skill'][0] - (3 * stats[player]['skill'][1])
 
     return stats
 
@@ -175,17 +187,11 @@ addColumn = (lines, stats, header, field, formatFunc) ->
       lines[2+index] += "| #{fieldValue}"
 
 
-rankSort = (p1, p2) ->
-    # Negative ranks are considered the lowest, so pushed to the end
-    if p1['rank'] < 0
-        return 1
-    if p2['rank'] < 0
-        return -1
-
+skillSort = (p1, p2) ->
     # High ranks are pushed to the front
-    if p1['rank'] > p2['rank']
+    if p1['trueskill'] > p2['trueskill']
         return -1
-    if p1['rank'] < p2['rank']
+    if p1['trueskill'] < p2['trueskill']
         return 1
 
     # Order by games won next
@@ -195,24 +201,19 @@ rankSort = (p1, p2) ->
         return 1
 
     # Order by win percentage last
-    if p1['winPercentage'] >= p2['winPercentage']
-        return -1
-    return 1
+    return if p1['winPercentage'] >= p2['winPercentage'] then -1 else 1
 
 getRankings = () ->
     # Get the stats for each player
     stats = getStats()
 
-    # Add the name and make a sortable array
+    # Make a sortable array
     rankings = []
     for player in Object.keys(stats)
-        playerStats = stats[player]
-        playerStats["name"] = player
-        playerStats["rank"] = (3 * playerStats["gamesWon"]) + (1 * (playerStats["gamesPlayed"] - playerStats["gamesWon"]))
-        rankings.push playerStats
+        rankings.push stats[player]
 
     # Sort the players based on rank
-    rankings.sort(rankSort)
+    rankings.sort(skillSort)
 
     return rankings
 
@@ -224,7 +225,7 @@ rankingsRespond = (res) ->
     responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
     addColumn(responseList, rankings, "", "", ) # Index column
     addColumn(responseList, rankings, "Player", "name")
-    addColumn(responseList, rankings, "Rank Score", "rank")
+    addColumn(responseList, rankings, "Trueskill", "trueskill")
     addColumn(responseList, rankings, "Win Percentage", "winPercentage", percentFormat)
     addColumn(responseList, rankings, "Games Won", "gamesWon")
     addColumn(responseList, rankings, "Games Played", "gamesPlayed")
@@ -232,15 +233,27 @@ rankingsRespond = (res) ->
     res.send responseList.join('\n')
 
 
+rankSort = (p1,p2) ->
+    # Negative rank means the player isn't ranked
+    if p1['rank'] < 0
+        return -1
+    if p2['rank'] < 0
+        return 1
+
+    # A low rank is better than a high rank
+    return if p1['rank'] <= p2['rank'] then -1 else 1
+
+
 getRank = (playerName, rankings) ->
-    for stat in rankings
-        if stat['name'] == playerName
-            return stat['rank']
+    for player, rank in rankings
+        if player['name'] == playerName
+            return rank
 
     return -1
 
+
 balancePlayers = (game) ->
-    # Get the player rankings
+    # Get the player rankings, which are sorted correctly
     rankings = getRankings()
 
     # Balance based on rank
@@ -366,13 +379,13 @@ finishGameRespond = (res) ->
     # The following is the format for game results
     result = {
         'team1': {
-            'player1': game[0].trim(),
-            'player2': game[1].trim(),
+            'player1': game[0].trim().toLowerCase(),
+            'player2': game[1].trim().toLowerCase(),
             'score': parseInt(res.match[1].trim(), 10)
         },
         'team2': {
-            'player1': game[2].trim(),
-            'player2': game[3].trim(),
+            'player1': game[2].trim().toLowerCase(),
+            'player2': game[3].trim().toLowerCase(),
             'score': parseInt(res.match[2].trim(), 10)
         }
     }
