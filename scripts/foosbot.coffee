@@ -35,12 +35,64 @@ finishedGamesFile = 'finishedgames.json'
 games = JSON.parse((fs.readFileSync gamesFile, 'utf8').toString().trim())
 finishedGames = JSON.parse((fs.readFileSync finishedGamesFile, 'utf8').toString().trim())
 
-
 saveGames = () ->
   fs.writeFileSync(gamesFile, JSON.stringify(games))
 
 saveFinishedGames = () ->
   fs.writeFileSync(finishedGamesFile, JSON.stringify(finishedGames))
+
+
+# Date diff calculations
+_MS_PER_DAY = 1000 * 60 * 60 * 24
+diffDays = (date1, date2) ->
+    return Math.round((date1 - date2) / _MS_PER_DAY, 0)
+
+# Store list of datetimes of previous plays
+_SHAME_MESSAGES = {
+    3: "Playing again, huh? For the 4th time today...",
+    4: "Shouldn't you be doing...work?",
+    5: "Wow, look at how much your rank has increased after all these games you've played!",
+    6: "You could have finished that ticket in the time you've spent playing foosball today",
+    7: "Aren't your hands tired by now?",
+    8: "Now you're just trying to see how many different responses there are",
+    9: "Are you /really/ sure you want to keep going?",
+}
+_DEFAULT_SHAME_MESSAGE = "Maximum slack level reached, HR has been notified"
+getShameMsg = (player, timesPlayed) ->
+    shameMsg = _SHAME_MESSAGES[timesPlayed] || _DEFAULT_SHAME_MESSAGE
+    return "@#{player} #{shameMsg}"
+
+# Store shame
+shameFile = 'shame.json'
+shame = JSON.parse((fs.readFileSync shameFile, 'utf8').toString().trim())
+for player of shame
+    shame[player] = shame[player].map (playTime) -> new Date(playTime)
+
+saveShame = () ->
+  fs.writeFileSync(shameFile, JSON.stringify(shame))
+
+# Shame players who play too much
+updateShame = (player) ->
+    if !(player of shame)
+        shame[player] = []
+
+    now = new Date()
+    shame[player].push now
+    saveShame()
+
+shameSlacker = (res, player) ->
+    player = player.trim().toLowerCase()
+    if !(player of shame)
+        return
+
+    # Remove all recorded plays older than 1 day
+    now = new Date()
+    shame[player] = shame[player].filter (playTime) -> diffDays(now, playTime) == 0
+    saveShame()
+
+    timesPlayed = shame[player].length
+    if timesPlayed >= 3
+        res.send getShameMsg(player, timesPlayed)
 
 
 isUndefined = (myvar) ->
@@ -72,10 +124,12 @@ gamesRespond = (res) ->
 
 
 startGameRespond = (res) ->
-  # TODO: Create a new group of four, at the end of the games array
+  # Create a new group of four, at the end of the games array
   captain = res.message.user.name
   games.push [captain, '_', '_', '_']
   saveGames()
+
+  shameSlacker(res, captain)
 
   res.send "New game started"
   gamesRespond(res)
@@ -280,6 +334,8 @@ joinGameRespond = (res, n, playerName) ->
         res.send "Invalid game index #{n}"
         return
 
+    shameSlacker(res, newPlayer)
+
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
     game = games[n]
@@ -435,22 +491,30 @@ finishGameRespond = (res) ->
     results = res.match[1].trim().split(",")
     for result in results
         result = result.trim().split('-')
-        t1score = result[0]
-        t2score = result[1]
+        t1score = parseInt(result[0], 10)
+        t2score = parseInt(result[1], 10)
+
+        t1p1 = game[0].trim().toLowerCase()
+        t1p2 = game[1].trim().toLowerCase()
+        t2p1 = game[2].trim().toLowerCase()
+        t2p2 = game[3].trim().toLowerCase()
 
         # The following is the format for game results
         resultDetails = {
             'team1': {
-                'player1': game[0].trim().toLowerCase(),
-                'player2': game[1].trim().toLowerCase(),
-                'score': parseInt(t1score, 10)
+                'player1': t1p1,
+                'player2': t1p2,
+                'score': t1score
             },
             'team2': {
-                'player1': game[2].trim().toLowerCase(),
-                'player2': game[3].trim().toLowerCase(),
-                'score': parseInt(t2score, 10)
+                'player1': t2p1,
+                'player2': t2p2,
+                'score': t2score
             }
         }
+
+        for player in [t1p1,t1p2,t2p1,t2p2]
+            updateShame(player)
 
         # Record the scores and save them
         finishedGames.push resultDetails
@@ -459,6 +523,7 @@ finishGameRespond = (res) ->
 
     # Remove the game from the list
     games.splice(0,1)
+    saveGames()
 
     res.send "Results saved"
 
