@@ -48,18 +48,18 @@ diffDays = (date1, date2) ->
     return Math.round((date1 - date2) / _MS_PER_DAY, 0)
 
 # Store list of datetimes of previous plays
-_SHAME_MESSAGES = {
-    3: "Playing again, huh? For the 4th time today...",
-    4: "Shouldn't you be doing...work?",
-    5: "Wow, look at how much your rank has increased after all these games you've played!",
-    6: "You could have finished that ticket in the time you've spent playing foosball today",
-    7: "Aren't your hands tired by now?",
-    8: "Now you're just trying to see how many different responses there are",
-    9: "Are you /really/ sure you want to keep going?",
-}
+_SHAME_MESSAGES = [
+    "Playing again, huh?",
+    "Shouldn't you be doing...work?",
+    "Wow, look at your rank after all these games you've played!",
+    "You could have finished that ticket in the time you've spent playing foosball today",
+    "Aren't your hands tired by now?",
+    "Maybe it's time you took a break from foos",
+    "Are you /really/ sure you want to keep playing today?",
+]
 _DEFAULT_SHAME_MESSAGE = "Maximum slack level reached, HR has been notified"
-getShameMsg = (player, timesPlayed) ->
-    shameMsg = _SHAME_MESSAGES[timesPlayed] || _DEFAULT_SHAME_MESSAGE
+getShameMsg = (res, player, timesPlayed) ->
+    shameMsg = if timesPlayed >= 10 then _DEFAULT_SHAME_MESSAGE else res.random _SHAME_MESSAGES
     return "@#{player} #{shameMsg}"
 
 # Store shame
@@ -85,14 +85,14 @@ shameSlacker = (res, player) ->
     if !(player of shame)
         return
 
-    # Remove all recorded plays older than 1 day
+    # Remove all recorded plays older than 1 day and not on the same calendar date
     now = new Date()
-    shame[player] = shame[player].filter (playTime) -> diffDays(now, playTime) == 0
+    shame[player] = shame[player].filter (playTime) -> (diffDays(now, playTime) == 0) && (playTime.getDate() == now.getDate())
     saveShame()
 
     timesPlayed = shame[player].length
     if timesPlayed >= 3
-        res.send getShameMsg(player, timesPlayed)
+        res.send getShameMsg(res, player, timesPlayed)
 
 
 isUndefined = (myvar) ->
