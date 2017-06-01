@@ -320,7 +320,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
             rankDiff = curRank
             prefix = '~'
 
-        rankChanges += "#{prefix}#{rankDiff} #{p}\n"
+        rankChanges += "#{prefix}#{rankDiff} -> #{curRank} #{p}\n"
 
         previousRanks[player] = curRank
 
