@@ -320,7 +320,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
             prefix = if rankDiff < 0 then '' else '+'
         else
             rankDiff = curRank
-            prefix = '~'
+            prefix = '='
 
         rankChanges += "#{prefix}#{rankDiff} -> #{curRank} #{p}\n"
 
