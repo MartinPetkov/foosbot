@@ -302,8 +302,6 @@ resetPreviousRankings = (res) ->
         previousRanks[player['name']] = rank + 1
 
     savePreviousRanks()
-    
-    res.send "Previous rankings reset to current rankings"
 
 
 showChangedRankings = (res, p1, p2, p3, p4) ->
@@ -324,7 +322,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
 
         rankChanges += "#{prefix}#{rankDiff} -> #{curRank} #{p}\n"
 
-    resetPreviousRankings()
+    resetPreviousRankings(res)
 
     res.send rankChanges
 
