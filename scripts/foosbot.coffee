@@ -300,6 +300,8 @@ resetPreviousRankings = (res) ->
     rankings = getRankings()
     for player, rank in rankings
         previousRanks[player['name']] = rank + 1
+
+    savePreviousRanks()
     
     res.send "Previous rankings reset to current rankings"
 
