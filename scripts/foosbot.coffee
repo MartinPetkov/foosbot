@@ -324,9 +324,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
 
         rankChanges += "#{prefix}#{rankDiff} -> #{curRank} #{p}\n"
 
-        previousRanks[player] = curRank
-
-    savePreviousRanks()
+    resetPreviousRankings()
 
     res.send rankChanges
 
