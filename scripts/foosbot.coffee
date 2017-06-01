@@ -299,7 +299,7 @@ rankingsRespond = (res) ->
 resetPreviousRankings = (res) ->
     rankings = getRankings()
     for player, rank in rankings
-        previousRanks[player['name']] = rank
+        previousRanks[player['name']] = rank + 1
     
     res.send "Previous rankings reset to current rankings"
 
@@ -310,7 +310,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
     rankings = getRankings()
 
     for p in [p1,p2,p3,p4]
-        curRank = getRank(p, rankings)
+        curRank = getRank(p, rankings) + 1
         console.log
         if p of previousRanks
             prevRank = previousRanks[p]
