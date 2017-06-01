@@ -31,15 +31,24 @@ ts = require 'trueskill'
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
+previousRanksFile = 'previousranks.json'
 
-games = JSON.parse((fs.readFileSync gamesFile, 'utf8').toString().trim())
-finishedGames = JSON.parse((fs.readFileSync finishedGamesFile, 'utf8').toString().trim())
+
+loadFile = (fileName) ->
+    return JSON.parse((fs.readFileSync fileName, 'utf8').toString().trim())
+
+games = loadFile(gamesFile)
+finishedGames = loadFile(finishedGamesFile)
+previousRanks = loadFile(previousRanksFile)
 
 saveGames = () ->
   fs.writeFileSync(gamesFile, JSON.stringify(games))
 
 saveFinishedGames = () ->
   fs.writeFileSync(finishedGamesFile, JSON.stringify(finishedGames))
+
+savePreviousRanks = () ->
+  fs.writeFileSync(previousRanksFile, JSON.stringify(previousRanks))
 
 
 # Date diff calculations
@@ -287,6 +296,39 @@ rankingsRespond = (res) ->
     res.send responseList.join('\n')
 
 
+resetPreviousRankings = (res) ->
+    rankings = getRankings()
+    for player, rank in rankings
+        previousRanks[player['name']] = rank
+    
+    res.send "Previous rankings reset to current rankings"
+
+
+showChangedRankings = (res, p1, p2, p3, p4) ->
+    rankChanges = "Rank changes:\n"
+
+    rankings = getRankings()
+
+    for p in [p1,p2,p3,p4]
+        curRank = getRank(p, rankings)
+        console.log
+        if p of previousRanks
+            prevRank = previousRanks[p]
+            rankDiff = prevRank - curRank
+            prefix = if rankDiff < 0 then '' else '+'
+        else
+            rankDiff = curRank
+            prefix = '~'
+
+        rankChanges += "#{prefix}#{rankDiff} #{p}\n"
+
+        previousRanks[player] = curRank
+
+    savePreviousRanks()
+
+    res.send rankChanges
+
+
 rankSort = (p1,p2) ->
     # Negative rank means the player isn't ranked
     if p1['rank'] < 0
@@ -521,6 +563,9 @@ finishGameRespond = (res) ->
 
     saveFinishedGames()
 
+    # Show changed rankings since last time
+    showChangedRankings(res, t1p1, t1p2, t2p1, t2p2)
+
     # Remove the game from the list
     games.splice(0,1)
     saveGames()
@@ -553,3 +598,4 @@ module.exports = (robot) ->
 
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
+    robot.respond /reset previous rankings$/i, resetPreviousRankings
