@@ -4,7 +4,7 @@
 # Commands:
 #   foosbot Games - List currently scheduled games
 #   foosbot Start game - Start a new game, always added to the end of the queue
-#   foosbot Find people - Ask for people to play in the next game
+#   foosbot Find people|players - Ask for people to play in the next game
 #   foosbot I'm in | Join game - Claim a spot in the next game
 #   foosbot Add <player_name> - Add a player that may or may not be on LCB to the next game
 #   foosbot Kick <player_name> - Kick a player from the next game
@@ -12,7 +12,7 @@
 #   foosbot Cancel game - Cancel the next game
 #   foosbot Balance game - Balance the next game based on player ranks
 #   foosbot Shuffle game - Randomly shuffle the players in the next game
-#   foosbot Find people for game <n> - Ask for people to play in the nth game
+#   foosbot Find people|players for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
 #   foosbot Add <player_name> to game <n> - Add a player that may or may not be on LCB to the nth game
 #   foosbot Kick <player_name> from game <n> - Kick a player from the nth game
@@ -605,7 +605,7 @@ theRulesRespond = (res) ->
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
-    robot.respond /find people for game (\d+)/i, findPeopleForGameRespond
+    robot.respond /find (?:people|players) for game (\d+)/i, findPeopleForGameRespond
     robot.respond /join game (\d+)/i, joinGameRespond
     robot.respond /add (\w+) to game (\d+)/i, addToGameRespond
     robot.respond /kick (\w+) from game (\d+)/i, kickFromGameRespond
@@ -615,7 +615,7 @@ module.exports = (robot) ->
     robot.respond /shuffle game (\d+)/i, shuffleGameRespond
 
     robot.respond /start game/i, startGameRespond
-    robot.respond /find people$/i, findPeopleForNextGameRespond
+    robot.respond /find people|find players$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
     robot.respond /add (\w+)$/i, addToNextGameRespond
