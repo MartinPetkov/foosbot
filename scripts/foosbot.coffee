@@ -22,6 +22,7 @@
 #   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
 #   foosbot Finish game <team1_score>-<team2_score>, ... - Finish the next game and record the results (of possibly multiple games)
 #   foosbot Rankings|Leaderboard - Show the leaderboard
+#   foosbot The rules - Show the rules we play by
 #
 # Author:
 #   MartinPetkov
@@ -570,6 +571,23 @@ finishGameRespond = (res) ->
 
     res.send "Results saved"
 
+theRulesRespond = (res) ->
+    res.send [
+        "No spinning",
+        "If someone scores with the first shot, it doesn't count",
+        "If a team gets scored on without touching the ball, it doesn't count",
+        "Any player can score from any position",
+        "When one team reaches 5 points, both teams switch defense/offense players",
+        "If a shot goes in but comes out, it counts as long as it made the *dank* sound",
+        "The last goal cannot be an own goal, it must be scored by the opposing team",
+        "If unsure whether a goal counts, the team that got scored on makes the call",
+        "If the ball goes dead anywhere except the far sides, reset to the middle",
+        "If the ball goes dead on a far side, defense resets it from a corner",
+        "If the ball flies off the table, reset to the middle",
+        "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
+        "Everyone shakes hands at the end of the game, no exceptions",
+        ].map((rule, i) -> "##{i+1}. #{rule}").join('\n')
+
 
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
@@ -597,3 +615,5 @@ module.exports = (robot) ->
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
+
+    robot.respond /the rules/i, theRulesRespond
