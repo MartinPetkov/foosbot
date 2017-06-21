@@ -179,8 +179,9 @@ initOrRetrievePlayerStat = (stats, playerName) ->
         "winPercentage": 0,
         "skill": [25.0, 25.0/3.0],
         "rank": 2,
-        "currentWinStreak": 0,
+        "streak": 0,
         "longestWinStreak": 0,
+        "longestLoseStreak": 0,
     }
 
 getStats = () ->
@@ -213,12 +214,18 @@ getStats = () ->
         for wp in winPlayers
             stats[wp]['gamesWon'] += 1
             stats[wp]['rank'] = 1
-            stats[wp]['currentWinStreak'] += 1
-            if stats[wp]['currentWinStreak'] > stats[wp]['longestWinStreak']
-                stats[wp]['longestWinStreak'] = stats[wp]['currentWinStreak']
+
+            # If they were losing until this game, reset them to a 1 win streak
+            stats[wp]['streak'] = if stats[wp]['streak'] < 0 then 1 else stats[wp]['streak'] + 1
+            if stats[wp]['streak'] > stats[wp]['longestWinStreak']
+                stats[wp]['longestWinStreak'] = stats[wp]['streak']
         
         for lp in losePlayers
-            stats[lp]['currentWinStreak'] = 0
+            # If they were winning until this game, reset them to a 1 lose streak
+            stats[lp]['streak'] = if stats[lp]['streak'] > 0 then -1 else stats[lp]['streak'] - 1
+
+            if -stats[lp]['streak'] > stats[lp]['longestLoseStreak']
+                stats[lp]['longestLoseStreak'] = -stats[lp]['streak']
 
         ts.AdjustPlayers([stats[t1p1], stats[t1p2], stats[t2p1], stats[t2p2]])
     
@@ -230,8 +237,13 @@ getStats = () ->
     return stats
 
 noopFormat = (str) -> return "#{str}"
+trueskillFormat = (str) -> return "#{str.toFixed(5)}"
 percentFormat = (str) -> return "#{str}%    "
 gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
+streakFormat = (str) ->
+    winning = str > 0
+    gameStreak = if winning then str else -str
+    return "#{gameStreak} #{if winning then 'won :fire:' else 'lost :poop:'}"
 
 addColumn = (lines, stats, header, field, formatFunc) ->
   isIndexColumn = !field
@@ -240,15 +252,22 @@ addColumn = (lines, stats, header, field, formatFunc) ->
   # Calculate the longest length, for padding
   header = if isIndexColumn then "Rank" else "#{header}"
   longestLength = header.length
+  longestHeaderLength = header.length
   for stat, index in stats
     fieldValue = if isIndexColumn then "#{index}" else formatFunc(stat[field])
 
     longestLength = Math.max(longestLength, fieldValue.length)
 
+    # Convert emojis to a single character
+    collapsedFieldValue = fieldValue
+    collapsedFieldValue = collapsedFieldValue.replace /:.*:/g, (txt) -> ':::'
+    longestHeaderLength = Math.max(longestHeaderLength, collapsedFieldValue.length)
+
   longestLength += 1
+  longestHeaderLength += 1
 
   # Add the header and the underline
-  headerLength = longestLength + 2
+  headerLength = longestHeaderLength + 2
   lines[0] += rightPad(header, headerLength)
   lines[1] += '-'.repeat(headerLength)
 
@@ -300,12 +319,13 @@ rankingsRespond = (res) ->
     responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
     addColumn(responseList, rankings, "", "", ) # Index column
     addColumn(responseList, rankings, "Player", "name")
-    addColumn(responseList, rankings, "Trueskill", "trueskill")
+    addColumn(responseList, rankings, "Trueskill", "trueskill", trueskillFormat)
     addColumn(responseList, rankings, "Win %", "winPercentage", percentFormat)
-    addColumn(responseList, rankings, "Games Won", "gamesWon")
-    addColumn(responseList, rankings, "Games Played", "gamesPlayed")
-    addColumn(responseList, rankings, "Win Streak", "currentWinStreak", gamesFormat)
-    addColumn(responseList, rankings, "Longest Streak", "longestWinStreak", gamesFormat)
+    addColumn(responseList, rankings, "Won", "gamesWon")
+    addColumn(responseList, rankings, "Played", "gamesPlayed")
+    addColumn(responseList, rankings, "Streak", "streak", streakFormat)
+    addColumn(responseList, rankings, "Longest Win Streak", "longestWinStreak", gamesFormat)
+    addColumn(responseList, rankings, "Longest Lose Streak", "longestLoseStreak", gamesFormat)
     
     res.send responseList.join('\n')
 
