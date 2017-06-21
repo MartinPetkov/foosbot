@@ -599,7 +599,7 @@ theRulesRespond = (res) ->
         "If the ball flies off the table, reset to the middle",
         "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
         "Everyone shakes hands at the end of the game, no exceptions",
-        ].map((rule, i) -> "##{i+1}. #{rule}").join('\n')
+        ].map((rule, i) -> "#{i+1}. #{rule}").join('\n')
 
 
 module.exports = (robot) ->
