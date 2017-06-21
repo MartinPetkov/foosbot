@@ -178,7 +178,9 @@ initOrRetrievePlayerStat = (stats, playerName) ->
         "gamesWon": 0,
         "winPercentage": 0,
         "skill": [25.0, 25.0/3.0],
-        "rank": 2
+        "rank": 2,
+        "currentWinStreak": 0,
+        "longestWinStreak": 0,
     }
 
 getStats = () ->
@@ -199,16 +201,24 @@ getStats = () ->
             stats[player]['gamesPlayed'] += 1
             stats[player]['rank'] = 2
 
+        winPlayers = []
+        losePlayers = []
         if t1score > t2score
-            stats[t1p1]['gamesWon'] += 1
-            stats[t1p2]['gamesWon'] += 1
-            stats[t1p1]['rank'] = 1
-            stats[t1p2]['rank'] = 1
+            winPlayers = [t1p1, t1p2]
+            losePlayers = [t2p1, t2p2]
         else if t2score > t1score
-            stats[t2p1]['gamesWon'] += 1
-            stats[t2p2]['gamesWon'] += 1
-            stats[t2p1]['rank'] = 1
-            stats[t2p2]['rank'] = 1
+            winPlayers = [t2p1, t2p2]
+            losePlayers = [t1p1, t1p2]
+
+        for wp in winPlayers
+            stats[wp]['gamesWon'] += 1
+            stats[wp]['rank'] = 1
+            stats[wp]['currentWinStreak'] += 1
+            if stats[wp]['currentWinStreak'] > stats[wp]['longestWinStreak']
+                stats[wp]['longestWinStreak'] = stats[wp]['currentWinStreak']
+        
+        for lp in losePlayers
+            stats[lp]['currentWinStreak'] = 0
 
         ts.AdjustPlayers([stats[t1p1], stats[t1p2], stats[t2p1], stats[t2p2]])
     
@@ -220,7 +230,8 @@ getStats = () ->
     return stats
 
 noopFormat = (str) -> return "#{str}"
-percentFormat = (str) -> return "#{str}%"
+percentFormat = (str) -> return "#{str}%    "
+gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
 
 addColumn = (lines, stats, header, field, formatFunc) ->
   isIndexColumn = !field
@@ -290,9 +301,11 @@ rankingsRespond = (res) ->
     addColumn(responseList, rankings, "", "", ) # Index column
     addColumn(responseList, rankings, "Player", "name")
     addColumn(responseList, rankings, "Trueskill", "trueskill")
-    addColumn(responseList, rankings, "Win Percentage", "winPercentage", percentFormat)
+    addColumn(responseList, rankings, "Win %", "winPercentage", percentFormat)
     addColumn(responseList, rankings, "Games Won", "gamesWon")
     addColumn(responseList, rankings, "Games Played", "gamesPlayed")
+    addColumn(responseList, rankings, "Win Streak", "currentWinStreak", gamesFormat)
+    addColumn(responseList, rankings, "Longest Streak", "longestWinStreak", gamesFormat)
     
     res.send responseList.join('\n')
 
