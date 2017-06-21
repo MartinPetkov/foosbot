@@ -243,7 +243,7 @@ gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
 streakFormat = (str) ->
     winning = str > 0
     gameStreak = if winning then str else -str
-    return "#{gameStreak} #{if winning then 'won :fire:' else 'lost :poop:'}"
+    return "#{if winning then ':fire:' else ':poop:'} #{gameStreak} #{if winning then 'won' else 'lost'}"
 
 addColumn = (lines, stats, header, field, formatFunc) ->
   isIndexColumn = !field
