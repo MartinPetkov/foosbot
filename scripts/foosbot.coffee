@@ -608,7 +608,6 @@ theRulesRespond = (res) ->
     res.send [
         "No spinning",
         "If someone scores with the first shot, it doesn't count",
-        "If a team gets scored on without touching the ball, it doesn't count",
         "Any player can score from any position",
         "When one team reaches 5 points, both teams switch defense/offense players",
         "If a shot goes in but comes out, it counts as long as it made the *dank* sound",
