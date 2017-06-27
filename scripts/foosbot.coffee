@@ -21,6 +21,8 @@
 #   foosbot Balance game <n> - Balance the nth game based on player ranks
 #   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
 #   foosbot Finish game <team1_score>-<team2_score>, ... - Finish the next game and record the results (of possibly multiple games)
+#   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
+#   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot The rules - Show the rules we play by
 #
@@ -33,6 +35,7 @@ ts = require 'trueskill'
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
 previousRanksFile = 'previousranks.json'
+cleanseFile = 'cleanse.json'
 
 
 loadFile = (fileName) ->
@@ -41,6 +44,7 @@ loadFile = (fileName) ->
 games = loadFile(gamesFile)
 finishedGames = loadFile(finishedGamesFile)
 previousRanks = loadFile(previousRanksFile)
+cleanse = loadFile(cleanseFile)
 
 saveGames = () ->
   fs.writeFileSync(gamesFile, JSON.stringify(games))
@@ -50,6 +54,9 @@ saveFinishedGames = () ->
 
 savePreviousRanks = () ->
   fs.writeFileSync(previousRanksFile, JSON.stringify(previousRanks))
+
+saveCleanse = () ->
+  fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
 
 
 # Date diff calculations
@@ -136,6 +143,10 @@ gamesRespond = (res) ->
 startGameRespond = (res) ->
   # Create a new group of four, at the end of the games array
   captain = res.message.user.name
+  if captain in cleanse
+    res.reply "You can't start any games, you're on a cleanse!"
+    return
+
   games.push [captain, '_', '_', '_']
   saveGames()
 
@@ -402,6 +413,13 @@ shufflePlayers = (game) ->
 
 joinGameRespond = (res, n, playerName) ->
     newPlayer = if isUndefined(playerName) then res.message.user.name else playerName
+    if newPlayer in cleanse
+        if isUndefined(playerName)
+            res.reply "You can't join any games, you're on a cleanse!"
+        else
+            res.send "#{newPlayer} cannot join games, they are on a cleanse! "
+        return
+
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     any = if !any then false else true
     if isInvalidIndex(n)
@@ -621,6 +639,28 @@ theRulesRespond = (res) ->
         ].map((rule, i) -> "#{i+1}. #{rule}").join('\n')
 
 
+goOnACleanseRespond = (res) ->
+    senderName = res.message.user.name
+    if !(senderName in cleanse)
+        cleanse.push senderName
+
+    saveCleanse()
+
+    res.reply "You are now on a cleanse. Stay away from the foosball table, and relax :palm_tree:"
+
+returnFromCleanseRespond = (res) ->
+    senderName = res.message.user.name
+
+    if !(senderName in cleanse)
+        res.reply "You are not on a cleanse, go play some foos!"
+        return
+
+    cleanse.splice(cleanse.indexOf(senderName), 1)
+    saveCleanse()
+
+    res.reply "Welcome back! Now go kick some ass"
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -647,5 +687,8 @@ module.exports = (robot) ->
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
+
+    robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
+    robot.respond /return from cleanse$/i, returnFromCleanseRespond
 
     robot.respond /the rules/i, theRulesRespond
