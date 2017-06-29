@@ -4,6 +4,7 @@
 # Commands:
 #   foosbot Games - List currently scheduled games
 #   foosbot Start game - Start a new game, always added to the end of the queue
+#   foosbot Start game with <p1> [<p2> <p3>] - Start a new game, always added to the end of the queue, with multiple people
 #   foosbot Find people|players - Ask for people to play in the next game
 #   foosbot I'm in | Join game - Claim a spot in the next game
 #   foosbot Add <player_name> - Add a player that may or may not be on LCB to the next game
@@ -126,7 +127,7 @@ round = (num, decimals) ->
 
 
 gamesRespond = (res) ->
-  # TODO: List the games, in groups of 4, with the indices
+  # List the games, in groups of 4, with the indices
   if games.length <= 0
     res.send "No games started"
     return
@@ -140,7 +141,7 @@ gamesRespond = (res) ->
   res.send responseLines.join('\n')
 
 
-startGameRespond = (res) ->
+startGameRespond = (res, startingPlayers) ->
   # Create a new group of four, at the end of the games array
   captain = res.message.user.name
   if captain in cleanse
@@ -153,7 +154,18 @@ startGameRespond = (res) ->
   shameSlacker(res, captain)
 
   res.send "New game started"
+
+  if !(isUndefined(startingPlayers))
+    n = games.length - 1
+    for sp in startingPlayers
+        joinGameRespond(res, n, sp)
+
   gamesRespond(res)
+
+startGameWithPlayersRespond = (res) ->
+    startingPlayers = (name.trim() for name in res.match[1].trim().split(' '))
+    res.send "Starting players: #{startingPlayers}"
+    startGameRespond(res, startingPlayers)
 
 
 isInvalidIndex = (gameIndex) ->
@@ -470,7 +482,7 @@ abandonGameRespond = (res, n, playerName) ->
     game[playerIndex] = '_'
     saveGames()
 
-    # TODO: Abandon the nth game, freeing your spot in it
+    # Abandon the nth game, freeing your spot in it
     remainingPlayers = [(player for player in game when player != "_")].join(', ')
     res.send "#{senderPlayer} abandoned game #{n}. Remaining players: #{remainingPlayers}"
 
@@ -486,7 +498,7 @@ cancelGameRespond = (res, n) ->
     games.splice(n, 1)
     saveGames()
 
-    # TODO: Cancel the nth game
+    # Cancel the nth game
     res.send "Game #{n} cancelled"
 
     gamesRespond(res)
@@ -673,7 +685,8 @@ module.exports = (robot) ->
     robot.respond /balance game (\d+)/i, balanceGameRespond
     robot.respond /shuffle game (\d+)/i, shuffleGameRespond
 
-    robot.respond /start game/i, startGameRespond
+    robot.respond /start game$/i, startGameRespond
+    robot.respond /start game with(( \w+){1,3})$/i, startGameWithPlayersRespond
     robot.respond /find people|find players$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
