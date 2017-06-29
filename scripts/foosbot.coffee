@@ -25,6 +25,7 @@
 #   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
+#   foosbot Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot The rules - Show the rules we play by
 #
 # Author:
@@ -268,7 +269,7 @@ streakFormat = (str) ->
     gameStreak = if winning then str else -str
     return "#{if winning then ':fire:' else ':poop:'} #{gameStreak} #{if winning then 'won' else 'lost'}"
 
-addColumn = (lines, stats, header, field, formatFunc) ->
+addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
   isIndexColumn = !field
   formatFunc = if isUndefined(formatFunc) then noopFormat else formatFunc
 
@@ -298,10 +299,13 @@ addColumn = (lines, stats, header, field, formatFunc) ->
   for stat, index in stats
     if isIndexColumn
       fieldValue = rightPad("#{index+1}", longestLength)
-      lines[2+index] += fieldValue
     else
       fieldValue = rightPad(formatFunc(stat[field]), longestLength)
-      lines[2+index] += "| #{fieldValue}"
+
+    if !isFirstColumn
+      lines[2+index] += "| "
+
+    lines[2+index] += "#{fieldValue}"
 
 
 skillSort = (p1, p2) ->
@@ -332,15 +336,22 @@ getRankings = () ->
     # Sort the players based on rank
     rankings.sort(skillSort)
 
+    for stat, rank in rankings
+        stat['rank'] = rank + 1
+
     return rankings
 
-rankingsRespond = (res) ->
+rankingsRespond = (res, specificPlayers) ->
     # Get the player rankings
     rankings = getRankings()
 
+    if !(isUndefined(specificPlayers))
+        rankings = rankings.filter (stat) -> stat["name"] in specificPlayers
+
     # Construct the rankings string
     responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
-    addColumn(responseList, rankings, "", "", ) # Index column
+    # addColumn(responseList, rankings, "", "", ) # Index column
+    addColumn(responseList, rankings, "Rank", "rank", noopFormat, true)
     addColumn(responseList, rankings, "Player", "name")
     addColumn(responseList, rankings, "Trueskill", "trueskill", trueskillFormat)
     addColumn(responseList, rankings, "Win %", "winPercentage", percentFormat)
@@ -351,6 +362,10 @@ rankingsRespond = (res) ->
     addColumn(responseList, rankings, "Longest Lose Streak", "longestLoseStreak", gamesFormat)
     
     res.send responseList.join('\n')
+
+rankingsForPlayersRespond = (res) ->
+    players = (name.trim() for name in res.match[1].trim().split(' '))
+    rankingsRespond(res, players)
 
 
 resetPreviousRankings = (res) ->
@@ -699,6 +714,7 @@ module.exports = (robot) ->
 
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
+    robot.respond /stats(( \w+)+)$/i, rankingsForPlayersRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
