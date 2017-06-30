@@ -25,7 +25,7 @@
 #   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
-#   foosbot Stats <player1> [<player2> ...] - Show the stats for specific players
+#   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot The rules - Show the rules we play by
 #
 # Author:
@@ -701,7 +701,7 @@ module.exports = (robot) ->
     robot.respond /shuffle game (\d+)/i, shuffleGameRespond
 
     robot.respond /start game$/i, startGameRespond
-    robot.respond /start game with(( \w+){1,3})$/i, startGameWithPlayersRespond
+    robot.respond /start game(?: with)?(( \w+){1,3})$/i, startGameWithPlayersRespond
     robot.respond /find people|find players$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
@@ -714,7 +714,7 @@ module.exports = (robot) ->
 
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
-    robot.respond /stats(( \w+)+)$/i, rankingsForPlayersRespond
+    robot.respond /(?:stats|rankings)(( \w+)+)$/i, rankingsForPlayersRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
