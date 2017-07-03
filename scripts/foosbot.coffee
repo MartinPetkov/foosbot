@@ -415,7 +415,8 @@ getRank = (playerName, rankings) ->
         if player['name'] == playerName
             return rank
 
-    return -1
+    # If the player is new, they should be considered worse than anyone
+    return Infinity
 
 
 balancePlayers = (game) ->
