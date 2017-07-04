@@ -26,6 +26,7 @@
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
+#   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
 #   foosbot The rules - Show the rules we play by
 #
 # Author:
@@ -689,6 +690,47 @@ returnFromCleanseRespond = (res) ->
     res.reply "Welcome back! Now go kick some ass"
 
 
+historyRespond = (res) ->
+    me = res.match[1] == 'me'
+    playerName = if me then res.message.user.name else res.match[1].trim()
+
+    numPastGames = if isUndefined(res.match[2]) then 5 else parseInt(res.match[2].trim(), 10)
+    gamesFound = 0
+    pastGames = []
+
+    # Collect the last n games
+    for i in [finishedGames.length-1..0] by -1
+        fgame = finishedGames[i]
+
+        if playerName in [fgame["team1"]["player1"], fgame["team1"]["player2"], fgame["team2"]["player1"], fgame["team2"]["player2"]]
+            pastGames.unshift(fgame)
+            gamesFound += 1
+
+            if gamesFound >= numPastGames
+                break
+
+    pronoun = if me then 'Your' else "#{playerName}'s"
+    strGames = "#{pronoun} last #{numPastGames} games:"
+    for pg, i in pastGames
+        if playerName in [pg["team1"]["player1"], pg["team1"]["player2"]]
+            score = "#{pg['team1']['score']}-#{pg['team2']['score']}"
+        else
+            score = "#{pg['team2']['score']}-#{pg['team1']['score']}"
+
+        if playerName == pg['team1']['player1']
+            teams = [pg['team1']['player1'], pg['team1']['player2'], pg['team2']['player1'], pg['team2']['player2']]
+        else if playerName == pg['team1']['player2']
+            teams = [pg['team1']['player2'], pg['team1']['player1'], pg['team2']['player1'], pg['team2']['player2']]
+        else if playerName == pg['team2']['player1']
+            teams = [pg['team2']['player1'], pg['team2']['player2'], pg['team1']['player1'], pg['team1']['player2']]
+        else
+            teams = [pg['team2']['player2'], pg['team2']['player1'], pg['team1']['player1'], pg['team1']['player2']]
+
+        strGames += "\n#{score}\t#{teams[0]} and #{teams[1]} vs. #{teams[2]} and #{teams[3]}"
+
+    res.send strGames
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -717,6 +759,8 @@ module.exports = (robot) ->
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /(?:stats|rankings)(( \w+)+)$/i, rankingsForPlayersRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
+
+    robot.respond /history (\w+)( \d+)?$/i, historyRespond
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
     robot.respond /return from cleanse$/i, returnFromCleanseRespond
