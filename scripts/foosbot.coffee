@@ -712,10 +712,15 @@ historyRespond = (res) ->
     pronoun = if me then 'Your' else "#{playerName}'s"
     strGames = "#{pronoun} last #{numPastGames} games:"
     for pg, i in pastGames
+        score = '\t'
         if playerName in [pg["team1"]["player1"], pg["team1"]["player2"]]
-            score = "#{pg['team1']['score']}-#{pg['team2']['score']}"
+            if pg['team1']['score'] > pg['team2']['score']
+                score = ':trophy:\t'
+            score += "#{pg['team1']['score']}-#{pg['team2']['score']}"
         else
-            score = "#{pg['team2']['score']}-#{pg['team1']['score']}"
+            if pg['team2']['score'] > pg['team1']['score']
+                score = ':trophy:\t'
+            score += "#{pg['team2']['score']}-#{pg['team1']['score']}"
 
         if playerName == pg['team1']['player1']
             teams = [pg['team1']['player1'], pg['team1']['player2'], pg['team2']['player1'], pg['team2']['player2']]
