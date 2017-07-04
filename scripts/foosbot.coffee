@@ -54,16 +54,16 @@ previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
 
 saveGames = () ->
-  fs.writeFileSync(gamesFile, JSON.stringify(games))
+    fs.writeFileSync(gamesFile, JSON.stringify(games))
 
 saveFinishedGames = () ->
-  fs.writeFileSync(finishedGamesFile, JSON.stringify(finishedGames))
+    fs.writeFileSync(finishedGamesFile, JSON.stringify(finishedGames))
 
 savePreviousRanks = () ->
-  fs.writeFileSync(previousRanksFile, JSON.stringify(previousRanks))
+    fs.writeFileSync(previousRanksFile, JSON.stringify(previousRanks))
 
 saveCleanse = () ->
-  fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
+    fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
 
 
 # Date diff calculations
@@ -120,53 +120,53 @@ shameSlacker = (res, player) ->
 
 
 isUndefined = (myvar) ->
-  return typeof myvar == 'undefined'
+    return typeof myvar == 'undefined'
 
 
 rightPad = (s, finalLength) ->
-  numSpaces = Math.max(0, finalLength - s.length)
-  return s + ' '.repeat(numSpaces)
+    numSpaces = Math.max(0, finalLength - s.length)
+    return s + ' '.repeat(numSpaces)
 
 
 round = (num, decimals) ->
-  return Number(Math.round(num+'e'+decimals)+'e-'+decimals);
+    return Number(Math.round(num+'e'+decimals)+'e-'+decimals);
 
 
 gamesRespond = (res) ->
-  # List the games, in groups of 4, with the indices
-  if games.length <= 0
-    res.send "No games started"
-    return
+    # List the games, in groups of 4, with the indices
+    if games.length <= 0
+        res.send "No games started"
+        return
 
-  responseLines = []
-  for game, index in games
-    team1 = "#{game[0]} and #{game[1]}"
-    team2 = "#{game[2]} and #{game[3]}"
-    responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
+    responseLines = []
+    for game, index in games
+        team1 = "#{game[0]} and #{game[1]}"
+        team2 = "#{game[2]} and #{game[3]}"
+        responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
 
-  res.send responseLines.join('\n')
+    res.send responseLines.join('\n')
 
 
 startGameRespond = (res, startingPlayers) ->
-  # Create a new group of four, at the end of the games array
-  captain = res.message.user.name
-  if captain in cleanse
-    res.reply "You can't start any games, you're on a cleanse!"
-    return
+    # Create a new group of four, at the end of the games array
+    captain = res.message.user.name
+    if captain in cleanse
+        res.reply "You can't start any games, you're on a cleanse!"
+        return
 
-  games.push [captain, '_', '_', '_']
-  saveGames()
+    games.push [captain, '_', '_', '_']
+    saveGames()
 
-  shameSlacker(res, captain)
+    shameSlacker(res, captain)
 
-  res.send "New game started"
+    res.send "New game started"
 
-  if !(isUndefined(startingPlayers))
-    n = games.length - 1
-    for sp in startingPlayers
-        joinGameRespond(res, n, sp)
+    if !(isUndefined(startingPlayers))
+        n = games.length - 1
+        for sp in startingPlayers
+            joinGameRespond(res, n, sp)
 
-  gamesRespond(res)
+    gamesRespond(res)
 
 startGameWithPlayersRespond = (res) ->
     startingPlayers = (name.trim() for name in res.match[1].trim().split(' '))
@@ -175,7 +175,7 @@ startGameWithPlayersRespond = (res) ->
 
 
 isInvalidIndex = (gameIndex) ->
-  return isNaN(gameIndex) || gameIndex < 0 || gameIndex >= games.length
+    return isNaN(gameIndex) || gameIndex < 0 || gameIndex >= games.length
 
 
 findPeopleForGameRespond = (res, n) ->
@@ -201,7 +201,7 @@ findPeopleForGameRespond = (res, n) ->
 initOrRetrievePlayerStat = (stats, playerName) ->
     if playerName of stats
         return stats[playerName]
-    
+
     return {
         "gamesPlayed": 0,
         "gamesWon": 0,
@@ -248,7 +248,7 @@ getStats = () ->
             stats[wp]['streak'] = if stats[wp]['streak'] < 0 then 1 else stats[wp]['streak'] + 1
             if stats[wp]['streak'] > stats[wp]['longestWinStreak']
                 stats[wp]['longestWinStreak'] = stats[wp]['streak']
-        
+
         for lp in losePlayers
             # If they were winning until this game, reset them to a 1 lose streak
             stats[lp]['streak'] = if stats[lp]['streak'] > 0 then -1 else stats[lp]['streak'] - 1
@@ -257,7 +257,7 @@ getStats = () ->
                 stats[lp]['longestLoseStreak'] = -stats[lp]['streak']
 
         ts.AdjustPlayers([stats[t1p1], stats[t1p2], stats[t2p1], stats[t2p2]])
-    
+
     for player in Object.keys(stats)
         stats[player]['name'] = player
         stats[player]['winPercentage'] = round((stats[player]['gamesWon'] / stats[player]['gamesPlayed']) * 100, 2)
@@ -275,42 +275,42 @@ streakFormat = (str) ->
     return "#{if winning then ':fire:' else ':poop:'} #{gameStreak} #{if winning then 'won' else 'lost'}"
 
 addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
-  isIndexColumn = !field
-  formatFunc = if isUndefined(formatFunc) then noopFormat else formatFunc
+    isIndexColumn = !field
+    formatFunc = if isUndefined(formatFunc) then noopFormat else formatFunc
 
-  # Calculate the longest length, for padding
-  header = if isIndexColumn then "Rank" else "#{header}"
-  longestLength = header.length
-  longestHeaderLength = header.length
-  for stat, index in stats
-    fieldValue = if isIndexColumn then "#{index}" else formatFunc(stat[field])
+    # Calculate the longest length, for padding
+    header = if isIndexColumn then "Rank" else "#{header}"
+    longestLength = header.length
+    longestHeaderLength = header.length
+    for stat, index in stats
+        fieldValue = if isIndexColumn then "#{index}" else formatFunc(stat[field])
 
-    longestLength = Math.max(longestLength, fieldValue.length)
+        longestLength = Math.max(longestLength, fieldValue.length)
 
-    # Convert emojis to a single character
-    collapsedFieldValue = fieldValue
-    collapsedFieldValue = collapsedFieldValue.replace /:.*:/g, (txt) -> ':::'
-    longestHeaderLength = Math.max(longestHeaderLength, collapsedFieldValue.length)
+        # Convert emojis to a single character
+        collapsedFieldValue = fieldValue
+        collapsedFieldValue = collapsedFieldValue.replace /:.*:/g, (txt) -> ':::'
+        longestHeaderLength = Math.max(longestHeaderLength, collapsedFieldValue.length)
 
-  longestLength += 1
-  longestHeaderLength += 1
+    longestLength += 1
+    longestHeaderLength += 1
 
-  # Add the header and the underline
-  headerLength = longestHeaderLength + 2
-  lines[0] += rightPad(header, headerLength)
-  lines[1] += '-'.repeat(headerLength)
+    # Add the header and the underline
+    headerLength = longestHeaderLength + 2
+    lines[0] += rightPad(header, headerLength)
+    lines[1] += '-'.repeat(headerLength)
 
-  # Add the column for each statistic
-  for stat, index in stats
-    if isIndexColumn
-      fieldValue = rightPad("#{index+1}", longestLength)
-    else
-      fieldValue = rightPad(formatFunc(stat[field]), longestLength)
+    # Add the column for each statistic
+    for stat, index in stats
+        if isIndexColumn
+            fieldValue = rightPad("#{index+1}", longestLength)
+        else
+            fieldValue = rightPad(formatFunc(stat[field]), longestLength)
 
-    if !isFirstColumn
-      lines[2+index] += "| "
+        if !isFirstColumn
+            lines[2+index] += "| "
 
-    lines[2+index] += "#{fieldValue}"
+        lines[2+index] += "#{fieldValue}"
 
 
 skillSort = (p1, p2) ->
@@ -365,7 +365,7 @@ rankingsRespond = (res, specificPlayers) ->
     addColumn(responseList, rankings, "Streak", "streak", streakFormat)
     addColumn(responseList, rankings, "Longest Win Streak", "longestWinStreak", gamesFormat)
     addColumn(responseList, rankings, "Longest Lose Streak", "longestLoseStreak", gamesFormat)
-    
+
     res.send responseList.join('\n')
 
 rankingsForPlayersRespond = (res) ->
