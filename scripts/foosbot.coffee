@@ -41,13 +41,17 @@ previousRanksFile = 'previousranks.json'
 cleanseFile = 'cleanse.json'
 
 
-loadFile = (fileName) ->
+loadFile = (fileName, initialValue) ->
+    # Initialize the file if it does not exist
+    if !(fs.existsSync(fileName))
+        fs.writeFileSync(fileName, JSON.stringify(initialValue))
+
     return JSON.parse((fs.readFileSync fileName, 'utf8').toString().trim())
 
-games = loadFile(gamesFile)
-finishedGames = loadFile(finishedGamesFile)
-previousRanks = loadFile(previousRanksFile)
-cleanse = loadFile(cleanseFile)
+games = loadFile(gamesFile, [])
+finishedGames = loadFile(finishedGamesFile, [])
+previousRanks = loadFile(previousRanksFile, {})
+cleanse = loadFile(cleanseFile, [])
 
 saveGames = () ->
   fs.writeFileSync(gamesFile, JSON.stringify(games))
