@@ -27,6 +27,7 @@
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
+#   foosbot Team Stats <playerOne>|me <playerTwo>|me - Shows the team stats for two players
 #   foosbot The rules - Show the rules we play by
 #
 # Author:
@@ -266,6 +267,7 @@ getStats = () ->
     return stats
 
 noopFormat = (str) -> return "#{str}"
+fixedTwoFormat = (str) -> return "#{str.toFixed(2)}"
 trueskillFormat = (str) -> return "#{str.toFixed(5)}"
 percentFormat = (str) -> return "#{str}%    "
 gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
@@ -476,7 +478,12 @@ joinGameRespond = (res, n, playerName) ->
             if game.indexOf('_') < 0
                 balancePlayers(game)
                 gamePlayers = game.map (player) -> "@#{player}"
-                teamsStr = "#{gamePlayers[0]} and #{gamePlayers[1]}\nvs.\n#{gamePlayers[2]} and #{gamePlayers[3]}"
+                teamOneWinRate = getTeamStats(game[0], game[1])["winPercentage"]
+                teamTwoWinRate = getTeamStats(game[2], game[3])["winPercentage"]
+
+                teamsStr = "#{gamePlayers[0]} and #{gamePlayers[1]} (#{teamOneWinRate}%)\n"
+                teamsStr += "vs.\n"
+                teamsStr += "#{gamePlayers[2]} and #{gamePlayers[3]} (#{teamTwoWinRate}%)"
                 res.send "#{gameStr} is ready to go! Teams:\n#{teamsStr}"
 
             saveGames()
@@ -694,6 +701,75 @@ returnFromCleanseRespond = (res) ->
     res.reply "Welcome back! Now go kick some ass"
 
 
+getTeamStats = (playerOneName, playerTwoName) ->
+    stats = {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "goalsFor": 0,
+        "goalsAgainst": 0,
+        "winPercentage": 0,
+        "avgGoalsFor": 0,
+        "avgGoalsAgainst": 0
+    }
+
+    for finishedGame in finishedGames
+        teamOne = [finishedGame["team1"]["player1"], finishedGame["team1"]["player2"]]
+        teamTwo = [finishedGame["team2"]["player1"], finishedGame["team2"]["player2"]]
+
+        if playerOneName in teamOne && playerTwoName in teamOne
+            myTeam = finishedGame["team1"]
+            otherTeam = finishedGame["team2"]
+        else if playerOneName in teamTwo && playerTwoName in teamTwo
+            myTeam = finishedGame["team2"]
+            otherTeam = finishedGame["team1"]
+        else
+            continue
+
+        if myTeam["score"] > otherTeam["score"]
+            stats["wins"] += 1
+        else if myTeam["score"] == otherTeam["score"]
+            stats["ties"] += 1
+        else
+            stats["losses"] += 1
+
+        stats["goalsFor"] += myTeam["score"]
+        stats["goalsAgainst"] += otherTeam["score"]
+
+    # Extra Stats
+    gamesPlayed = stats["wins"] + stats["losses"] + stats["ties"]
+
+    if gamesPlayed > 0
+        stats["winPercentage"] = ((stats["wins"] / gamesPlayed) * 100).toFixed(2)
+        stats["avgGoalsFor"] = stats["goalsFor"] / gamesPlayed
+        stats["avgGoalsAgainst"] = stats["goalsAgainst"] / gamesPlayed
+
+    return stats
+
+
+teamStatsRespond = (res) ->
+    playerOneName = if res.match[1] == 'me' then res.message.user.name else res.match[1].trim().toLowerCase()
+    playerTwoName = if res.match[2] == 'me' then res.message.user.name else res.match[2].trim().toLowerCase()
+
+    if playerOneName == playerTwoName
+        res.send "Player one and player two cannot be the same."
+        return
+
+    teamStats = getTeamStats(playerOneName, playerTwoName)
+    responseList = new Array(3).fill('')
+    addColumn(responseList, [teamStats], "Win", "wins", noopFormat, true)
+    addColumn(responseList, [teamStats], "Loss", "losses")
+    addColumn(responseList, [teamStats], "Tie", "ties")
+    addColumn(responseList, [teamStats], "Avg. Goals For", "avgGoalsFor", fixedTwoFormat)
+    addColumn(responseList, [teamStats], "Avg. Goals Against", "avgGoalsAgainst", fixedTwoFormat)
+
+    response = "Team: #{playerOneName} and #{playerTwoName}\n"
+    response += "Win Rate: #{teamStats["winPercentage"]}%\n\n"
+    response += responseList.join("\n")
+
+    res.send response
+
+
 historyRespond = (res) ->
     me = res.match[1] == 'me'
     playerName = if me then res.message.user.name else res.match[1].trim()
@@ -770,6 +846,7 @@ module.exports = (robot) ->
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
     robot.respond /history (\w+)( \d+)?$/i, historyRespond
+    robot.respond /team stats (\w+) (\w+)$/i, teamStatsRespond
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
     robot.respond /return from cleanse$/i, returnFromCleanseRespond
