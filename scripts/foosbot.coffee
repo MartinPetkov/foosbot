@@ -26,6 +26,7 @@
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
+#   foosbot Top <n> - Show the top n players in the rankings
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me - Shows the team stats for two players
 #   foosbot The rules - Show the rules we play by
@@ -348,12 +349,15 @@ getRankings = () ->
 
     return rankings
 
-rankingsRespond = (res, specificPlayers) ->
+rankingsRespond = (res, specificPlayers, topNPlayers) ->
     # Get the player rankings
     rankings = getRankings()
 
+    # Either filter or show topNPlayers players, but not both
     if !(isUndefined(specificPlayers))
         rankings = rankings.filter (stat) -> stat["name"] in specificPlayers
+    else if !(isUndefined(topNPlayers))
+        rankings = rankings.slice(0, topNPlayers)
 
     # Construct the rankings string
     responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
@@ -373,6 +377,10 @@ rankingsRespond = (res, specificPlayers) ->
 rankingsForPlayersRespond = (res) ->
     players = (name.trim() for name in res.match[1].trim().split(' '))
     rankingsRespond(res, players)
+
+topNRankingsRespond = (res) ->
+    n = res.match[1].trim()
+    rankingsRespond(res, undefined, n)
 
 
 resetPreviousRankings = (res) ->
@@ -843,6 +851,7 @@ module.exports = (robot) ->
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /(?:stats|rankings)(( \w+)+)$/i, rankingsForPlayersRespond
+    robot.respond /top (\d+).*$/i, topNRankingsRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
     robot.respond /history (\w+)( \d+)?$/i, historyRespond
