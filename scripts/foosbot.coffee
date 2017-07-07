@@ -28,7 +28,7 @@
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot Top <n> - Show the top n players in the rankings
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
-#   foosbot Team Stats <playerOne>|me <playerTwo>|me - Shows the team stats for two players
+#   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
 #
 # Author:
@@ -398,7 +398,6 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
 
     for p in [p1,p2,p3,p4]
         curRank = getRank(p, rankings) + 1
-        console.log
         if p of previousRanks
             prevRank = previousRanks[p]
             rankDiff = prevRank - curRank
@@ -710,47 +709,59 @@ returnFromCleanseRespond = (res) ->
 
 
 getTeamStats = (playerOneName, playerTwoName) ->
-    stats = {
-        "wins": 0,
-        "losses": 0,
-        "ties": 0,
-        "goalsFor": 0,
-        "goalsAgainst": 0,
-        "winPercentage": 0,
-        "avgGoalsFor": 0,
-        "avgGoalsAgainst": 0
-    }
+    # Allow getting stats for all team pairings by providing "all" as the playerTwoName
+    # The keys of the return dictionary are the names of the other team member
+
+    stats = {}
 
     for finishedGame in finishedGames
         teamOne = [finishedGame["team1"]["player1"], finishedGame["team1"]["player2"]]
         teamTwo = [finishedGame["team2"]["player1"], finishedGame["team2"]["player2"]]
 
-        if playerOneName in teamOne && playerTwoName in teamOne
+        if playerOneName in teamOne && (playerTwoName.toLowerCase() == 'all' || playerTwoName in teamOne)
             myTeam = finishedGame["team1"]
             otherTeam = finishedGame["team2"]
-        else if playerOneName in teamTwo && playerTwoName in teamTwo
+        else if playerOneName in teamTwo && (playerTwoName.toLowerCase() == 'all' || playerTwoName in teamTwo)
             myTeam = finishedGame["team2"]
             otherTeam = finishedGame["team1"]
         else
             continue
 
-        if myTeam["score"] > otherTeam["score"]
-            stats["wins"] += 1
-        else if myTeam["score"] == otherTeam["score"]
-            stats["ties"] += 1
-        else
-            stats["losses"] += 1
+        # Get the partner's name
+        partnerName = if myTeam["player1"] == playerOneName then myTeam["player2"] else myTeam["player1"]
+        if !(partnerName of stats)
+            stats[partnerName] = {
+                "wins": 0,
+                "losses": 0,
+                "ties": 0,
+                "goalsFor": 0,
+                "goalsAgainst": 0,
+                "winPercentage": 0,
+                "avgGoalsFor": 0,
+                "avgGoalsAgainst": 0
+            }
 
-        stats["goalsFor"] += myTeam["score"]
-        stats["goalsAgainst"] += otherTeam["score"]
+        partnerStats = stats[partnerName]
+
+        if myTeam["score"] > otherTeam["score"]
+            partnerStats["wins"] += 1
+        else if myTeam["score"] == otherTeam["score"]
+            partnerStats["ties"] += 1
+        else
+            partnerStats["losses"] += 1
+
+        partnerStats["goalsFor"] += myTeam["score"]
+        partnerStats["goalsAgainst"] += otherTeam["score"]
 
     # Extra Stats
-    gamesPlayed = stats["wins"] + stats["losses"] + stats["ties"]
+    for partnerName of stats
+        partnerStats = stats[partnerName]
 
-    if gamesPlayed > 0
-        stats["winPercentage"] = ((stats["wins"] / gamesPlayed) * 100).toFixed(2)
-        stats["avgGoalsFor"] = stats["goalsFor"] / gamesPlayed
-        stats["avgGoalsAgainst"] = stats["goalsAgainst"] / gamesPlayed
+        gamesPlayed = partnerStats["wins"] + partnerStats["losses"] + partnerStats["ties"]
+        if gamesPlayed > 0
+            partnerStats["winPercentage"] = ((partnerStats["wins"] / gamesPlayed) * 100).toFixed(2)
+            partnerStats["avgGoalsFor"] = partnerStats["goalsFor"] / gamesPlayed
+            partnerStats["avgGoalsAgainst"] = partnerStats["goalsAgainst"] / gamesPlayed
 
     return stats
 
@@ -764,16 +775,23 @@ teamStatsRespond = (res) ->
         return
 
     teamStats = getTeamStats(playerOneName, playerTwoName)
-    responseList = new Array(3).fill('')
-    addColumn(responseList, [teamStats], "Win", "wins", noopFormat, true)
-    addColumn(responseList, [teamStats], "Loss", "losses")
-    addColumn(responseList, [teamStats], "Tie", "ties")
-    addColumn(responseList, [teamStats], "Avg. Goals For", "avgGoalsFor", fixedTwoFormat)
-    addColumn(responseList, [teamStats], "Avg. Goals Against", "avgGoalsAgainst", fixedTwoFormat)
 
-    response = "Team: #{playerOneName} and #{playerTwoName}\n"
-    response += "Win Rate: #{teamStats["winPercentage"]}%\n\n"
-    response += responseList.join("\n")
+    # Build the response of stats for all team pairings
+    response = ''
+    for partnerName of teamStats
+        partnerStats = teamStats[partnerName]
+
+        responseList = new Array(3).fill('')
+        addColumn(responseList, [partnerStats], "Win", "wins", noopFormat, true)
+        addColumn(responseList, [partnerStats], "Loss", "losses")
+        addColumn(responseList, [partnerStats], "Tie", "ties")
+        addColumn(responseList, [partnerStats], "Avg. Goals For", "avgGoalsFor", fixedTwoFormat)
+        addColumn(responseList, [partnerStats], "Avg. Goals Against", "avgGoalsAgainst", fixedTwoFormat)
+        addColumn(responseList, [partnerStats], "Win Rate", "winPercentage", percentFormat)
+
+        response += "Team: #{playerOneName} and #{partnerName}\n"
+        response += responseList.join("\n")
+        response += "\n\n\n"
 
     res.send response
 
