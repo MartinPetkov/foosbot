@@ -708,20 +708,39 @@ returnFromCleanseRespond = (res) ->
     res.reply "Welcome back! Now go kick some ass"
 
 
+initTeamStat = (stats, playerName) ->
+    stats[playerName] = {
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "goalsFor": 0,
+        "goalsAgainst": 0,
+        "winPercentage": 0,
+        "avgGoalsFor": 0,
+        "avgGoalsAgainst": 0
+    }
+
 getTeamStats = (playerOneName, playerTwoName) ->
     # Allow getting stats for all team pairings by providing "all" as the playerTwoName
     # The keys of the return dictionary are the names of the other team member
 
     stats = {}
 
+    playerOneName = playerOneName.toLowerCase()
+    playerTwoName = playerTwoName.toLowerCase()
+
+    # Make sure the partner has the default stats
+    if !(playerTwoName == 'all')
+        initTeamStat(stats, playerTwoName)
+
     for finishedGame in finishedGames
         teamOne = [finishedGame["team1"]["player1"], finishedGame["team1"]["player2"]]
         teamTwo = [finishedGame["team2"]["player1"], finishedGame["team2"]["player2"]]
 
-        if playerOneName in teamOne && (playerTwoName.toLowerCase() == 'all' || playerTwoName in teamOne)
+        if playerOneName in teamOne && (playerTwoName == 'all' || playerTwoName in teamOne)
             myTeam = finishedGame["team1"]
             otherTeam = finishedGame["team2"]
-        else if playerOneName in teamTwo && (playerTwoName.toLowerCase() == 'all' || playerTwoName in teamTwo)
+        else if playerOneName in teamTwo && (playerTwoName == 'all' || playerTwoName in teamTwo)
             myTeam = finishedGame["team2"]
             otherTeam = finishedGame["team1"]
         else
@@ -730,16 +749,7 @@ getTeamStats = (playerOneName, playerTwoName) ->
         # Get the partner's name
         partnerName = if myTeam["player1"] == playerOneName then myTeam["player2"] else myTeam["player1"]
         if !(partnerName of stats)
-            stats[partnerName] = {
-                "wins": 0,
-                "losses": 0,
-                "ties": 0,
-                "goalsFor": 0,
-                "goalsAgainst": 0,
-                "winPercentage": 0,
-                "avgGoalsFor": 0,
-                "avgGoalsAgainst": 0
-            }
+            initTeamStat(stats, partnerName)
 
         partnerStats = stats[partnerName]
 
