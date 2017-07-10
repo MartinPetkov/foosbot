@@ -485,8 +485,8 @@ joinGameRespond = (res, n, playerName) ->
             if game.indexOf('_') < 0
                 balancePlayers(game)
                 gamePlayers = game.map (player) -> "@#{player}"
-                teamOneWinRate = getTeamStats(game[0], game[1])["winPercentage"]
-                teamTwoWinRate = getTeamStats(game[2], game[3])["winPercentage"]
+                teamOneWinRate = getTeamStats(game[0], game[1])[game[1]]["winPercentage"]
+                teamTwoWinRate = getTeamStats(game[2], game[3])[game[3]]["winPercentage"]
 
                 teamsStr = "#{gamePlayers[0]} and #{gamePlayers[1]} (#{teamOneWinRate}%)\n"
                 teamsStr += "vs.\n"
