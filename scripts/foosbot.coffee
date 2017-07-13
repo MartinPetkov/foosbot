@@ -829,14 +829,27 @@ historyRespond = (res) ->
     strGames = "#{pronoun} last #{numPastGames} games:"
     for pg, i in pastGames
         score = '\t'
-        if playerName in [pg["team1"]["player1"], pg["team1"]["player2"]]
-            if pg['team1']['score'] > pg['team2']['score']
-                score = ':trophy:\t'
-            score += "#{pg['team1']['score']}-#{pg['team2']['score']}"
-        else
-            if pg['team2']['score'] > pg['team1']['score']
-                score = ':trophy:\t'
-            score += "#{pg['team2']['score']}-#{pg['team1']['score']}"
+        team1 = [pg["team1"]["player1"], pg["team1"]["player2"]]
+        team2 = [pg["team2"]["player1"], pg["team2"]["player2"]]
+
+        thisTeam = team1
+        thisTeamScore = pg['team1']['score']
+        otherTeamScore = pg['team2']['score']
+        if playerName in team2
+            thisTeam = team2
+            thisTeamScore = pg['team2']['score']
+            otherTeamScore = pg['team1']['score']
+
+        if thisTeamScore > otherTeamScore
+            score = ':trophy:'
+            if otherTeamScore == 0
+                score += ':no_good:'
+            else if otherTeamScore == 8
+                score += ':feelsgood:'
+
+            score += '\t'
+
+        score += "#{thisTeamScore}-#{otherTeamScore}"
 
         if playerName == pg['team1']['player1']
             teams = [pg['team1']['player1'], pg['team1']['player2'], pg['team2']['player1'], pg['team2']['player2']]
