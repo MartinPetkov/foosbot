@@ -848,6 +848,8 @@ historyRespond = (res) ->
                 score += ':feelsgood:'
 
             score += '\t'
+        else if thisTeamScore == 8
+            score = ':skull:\t'
 
         score += "#{thisTeamScore}-#{otherTeamScore}"
 
