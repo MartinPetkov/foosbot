@@ -841,15 +841,15 @@ historyRespond = (res) ->
             otherTeamScore = pg['team1']['score']
 
         if thisTeamScore > otherTeamScore
-            score = ':trophy:'
+            score = process.env.WIN_EMOJI
             if otherTeamScore == 0
-                score += ':no_good:'
+                score += process.env.SHUTOUT_EMOJI
             else if otherTeamScore == 8
-                score += ':feelsgood:'
+                score += process.env.CLOSE_WIN_EMOJI
 
             score += '\t'
         else if thisTeamScore == 8
-            score = ':skull:\t'
+            score = process.env.CLOSE_LOSS_EMOJI + '\t'
 
         score += "#{thisTeamScore}-#{otherTeamScore}"
 
