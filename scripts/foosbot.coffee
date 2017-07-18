@@ -848,6 +848,8 @@ historyRespond = (res) ->
                 score += process.env.CLOSE_WIN_EMOJI
 
             score += '\t'
+        else if thisTeamScore == 0
+            score = process.env.NO_GOALS_EMOJI + '\t'
         else if thisTeamScore == 8
             score = process.env.CLOSE_LOSS_EMOJI + '\t'
 
