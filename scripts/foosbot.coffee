@@ -3,6 +3,7 @@
 #
 # Commands:
 #   foosbot Games - List currently scheduled games
+#   foosbot Total games - Return the number of total games
 #   foosbot Start game - Start a new game, always added to the end of the queue
 #   foosbot Start game with <p1> [<p2> <p3>] - Start a new game, always added to the end of the queue, with multiple people
 #   foosbot Find people|players - Ask for people to play in the next game
@@ -673,6 +674,7 @@ theRulesRespond = (res) ->
     res.send [
         "No spinning",
         "If someone scores with the first shot, it doesn't count",
+        "If someone scores by hitting the ball before it reaches the far wall, it doesn't count",
         "Any player can score from any position",
         "When one team reaches 5 points, both teams switch defense/offense players",
         "If a shot goes in but comes out, it counts as long as it made the *dank* sound",
@@ -869,8 +871,14 @@ historyRespond = (res) ->
     res.send strGames
 
 
+totalGamesRespond = (res) ->
+    res.send finishedGames.length
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
+
+    robot.respond /total games/i, totalGamesRespond
 
     robot.respond /find (?:people|players) for game (\d+)/i, findPeopleForGameRespond
     robot.respond /join game (\d+)/i, joinGameRespond
