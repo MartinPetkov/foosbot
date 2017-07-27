@@ -265,7 +265,7 @@ getStats = () ->
 
     return stats
 
-noopFormat = (str) -> return "#{str}"
+noopFormat = (str) -> return "#{str}#{if str == 1 then ':trophy' else ''}"
 trueskillFormat = (str) -> return "#{str.toFixed(5)}"
 percentFormat = (str) -> return "#{str}%    "
 gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
