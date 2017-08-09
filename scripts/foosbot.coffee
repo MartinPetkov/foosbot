@@ -23,6 +23,7 @@
 #   foosbot Balance game <n> - Balance the nth game based on player ranks
 #   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
 #   foosbot Finish game <team1_score>-<team2_score>, ... - Finish the next game and record the results (of possibly multiple games)
+#   foosbot Rematch - Repair your pride by playing the same game you just lost
 #   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
 #   foosbot Rankings|Leaderboard - Show the leaderboard
@@ -875,6 +876,22 @@ totalGamesRespond = (res) ->
     res.send finishedGames.length
 
 
+rematchRespond = (res) ->
+    playerName = res.message.user.name.trim().toLowerCase()
+
+    for i in [finishedGames.length-1..0] by -1
+        fgame = finishedGames[i]
+        fgamePlayers = [fgame["team1"]["player1"], fgame["team1"]["player2"], fgame["team2"]["player1"], fgame["team2"]["player2"]]
+
+        if playerName in fgamePlayers
+            res.send "Rematch called by #{playerName}!"
+            startingPlayers = fgamePlayers.filter (name) -> name != playerName
+            startGameRespond(res, startingPlayers)
+            return
+
+    res.send "Nothing to rematch, you haven't played any previous games"
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -900,6 +917,7 @@ module.exports = (robot) ->
     robot.respond /cancel game$/i, cancelNextGameRespond
     robot.respond /balance game$/i, balanceNextGameRespond
     robot.respond /shuffle game$/i, shuffleNextGameRespond
+    robot.respond /rematch/i, rematchRespond
 
     robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
