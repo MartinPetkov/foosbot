@@ -32,6 +32,13 @@
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
+#   foosbot Start tournament - Begin a new tournament (cannot run multiple tournaments at once)
+#   foosbot Cancel tournament - Cancel the currently running tournament (nothing will get saved)
+#   foosbot Show tournament - Show the current tournament tree
+#   foosbot Show tournament players - Show all the players involved in the tournament
+#   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
+#   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
+#   foosbot Finish tournament game <n> <team1_score>-<team2_score> - Finish a game and have the team move on
 #
 # Author:
 #   MartinPetkov
@@ -43,6 +50,7 @@ gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
 previousRanksFile = 'previousranks.json'
 cleanseFile = 'cleanse.json'
+tournamentFile = 'tournament.json'
 
 
 loadFile = (fileName, initialValue) ->
@@ -56,6 +64,7 @@ games = loadFile(gamesFile, [])
 finishedGames = loadFile(finishedGamesFile, [])
 previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
+tournament = loadFile(tournamentFile, [])
 
 saveGames = () ->
     fs.writeFileSync(gamesFile, JSON.stringify(games))
@@ -68,6 +77,9 @@ savePreviousRanks = () ->
 
 saveCleanse = () ->
     fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
+
+saveTournament = () ->
+    fs.writeFileSync(tournamentFile, JSON.stringify(tournament))
 
 
 # Date diff calculations
@@ -892,6 +904,69 @@ rematchRespond = (res) ->
     res.send "Nothing to rematch, you haven't played any previous games"
 
 
+# Tournament responders
+startTournamentRespond = (res) ->
+    # Initialize the game with the top 16 players
+    # Save all players and their ranks at that time
+    # Create teams by pairing 1-16, 2-15, etc.
+    return
+
+cancelTournamentRespond = (res) ->
+    # Empty out the object containing the tournament info
+    tournament = {}
+    saveTournament()
+
+    res.send "Tournament cancelled"
+
+showTournamentRespond = (res) ->
+    # Print the tournament tree, in the following format
+    # -------------|
+    # goofy, daffy | 
+    #              | 
+    #           [1]|--------------|
+    #              | goofy, daffy |
+    # mick, minnie |              |
+    # -------------|              |
+    #                          [3]|--- goofy, daffy
+    # -------------|              |
+    # pluto, don   |              |
+    #              | pluto, don   |
+    #           [2]|--------------|
+    #              |
+    # noob, mike   |
+    # -------------|
+
+    return
+
+showTournamentPlayersRespond = (res) ->
+    # Just list all the players currently in the tournament and their ranks at the time of joining
+    return
+
+swapTournamentPlayersRespond = (res) ->
+    # Try to swap two players
+    # If the players have been accepted, error out
+    # If the first player isn't in the tournament, error out
+    # If the second player is already in the tournament, error out
+    # If the second player didn't exist when the tournament was started, error out
+    return
+
+acceptTournamentPlayersRespond = (res) ->
+    # Freeze the players
+    tournament['playersAccepted'] = true
+    saveTournament()
+
+    res.send 'Players accepted, tournament is ready to go!'
+
+finishTournamentGameRespond = (res) ->
+    # Finish a game, as indicated in the tree diagram
+    # If the players have not been accepted, error out
+    # If the game does not exist, error out
+    # If the game does not have both teams yet, error out
+    # If the game has been finished already, error out
+    # If the game finished is the final game, print out a congratulatory message and fanfare, crowning the champions
+    return
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -930,5 +1005,14 @@ module.exports = (robot) ->
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
     robot.respond /return from cleanse$/i, returnFromCleanseRespond
+
+    # Tournament commands
+    robot.respond /start tournament/i, startTournamentRespond
+    robot.respond /cancel tournament/i, cancelTournamentRespond
+    robot.respond /show tournament$/i, showTournamentRespond
+    robot.respond /show tournament players/i, showTournamentPlayersRespond
+    robot.respond /swap tournament player (\w+) with (\w+)/i, swapTournamentPlayersRespond
+    robot.respond /accept tournament players/i, acceptTournamentPlayersRespond
+    robot.respond /finish tournament game (\d+) (\d-\d)/i, finishTournamentGameRespond
 
     robot.respond /the rules/i, theRulesRespond
