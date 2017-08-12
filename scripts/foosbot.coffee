@@ -36,9 +36,10 @@
 #   foosbot Cancel tournament - Cancel the currently running tournament (nothing will get saved)
 #   foosbot Show tournament - Show the current tournament tree
 #   foosbot Show tournament players - Show all the players involved in the tournament
+#   foosbot Show tournament Teams - Show all the teams involved in the tournament
 #   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
 #   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
-#   foosbot Finish tournament game <n> <team1_score>-<team2_score> - Finish a game and have the team move on
+#   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
 #
 # Author:
 #   MartinPetkov
@@ -64,7 +65,7 @@ games = loadFile(gamesFile, [])
 finishedGames = loadFile(finishedGamesFile, [])
 previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
-tournament = loadFile(tournamentFile, [])
+tournament = loadFile(tournamentFile, {'started': false})
 
 saveGames = () ->
     fs.writeFileSync(gamesFile, JSON.stringify(games))
@@ -101,6 +102,9 @@ _DEFAULT_SHAME_MESSAGE = "Maximum slack level reached, HR has been notified"
 getShameMsg = (res, player, timesPlayed) ->
     shameMsg = if timesPlayed >= 10 then _DEFAULT_SHAME_MESSAGE else res.random _SHAME_MESSAGES
     return "@#{player} #{shameMsg}"
+
+# Must be a power of 2
+_TOURNAMENT_SIZE = 16
 
 # Store shame
 shameFile = 'shame.json'
@@ -155,10 +159,10 @@ gamesRespond = (res) ->
         return
 
     responseLines = []
-    for game, index in games
+    for game, genericIndex in games
         team1 = "#{game[0]} and #{game[1]}"
         team2 = "#{game[2]} and #{game[3]}"
-        responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
+        responseLines.push "Game #{genericIndex}:\n#{team1}\nvs.\n#{team2}\n"
 
     res.send responseLines.join('\n')
 
@@ -197,7 +201,7 @@ isInvalidIndex = (gameIndex) ->
 findPeopleForGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     gameStr = if n == 0 then "Next game" else "Game #{n}"
@@ -299,8 +303,8 @@ addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
     header = if isIndexColumn then "Rank" else "#{header}"
     longestLength = header.length
     longestHeaderLength = header.length
-    for stat, index in stats
-        fieldValue = if isIndexColumn then "#{index}" else formatFunc(stat[field])
+    for stat, genericIndex in stats
+        fieldValue = if isIndexColumn then "#{genericIndex}" else formatFunc(stat[field])
 
         longestLength = Math.max(longestLength, fieldValue.length)
 
@@ -318,16 +322,16 @@ addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
     lines[1] += '-'.repeat(headerLength)
 
     # Add the column for each statistic
-    for stat, index in stats
+    for stat, genericIndex in stats
         if isIndexColumn
-            fieldValue = rightPad("#{index+1}", longestLength)
+            fieldValue = rightPad("#{genericIndex+1}", longestLength)
         else
             fieldValue = rightPad(formatFunc(stat[field]), longestLength)
 
         if !isFirstColumn
-            lines[2+index] += "| "
+            lines[2+genericIndex] += "| "
 
-        lines[2+index] += "#{fieldValue}"
+        lines[2+genericIndex] += "#{fieldValue}"
 
 
 skillSort = (p1, p2) ->
@@ -479,7 +483,7 @@ joinGameRespond = (res, n, playerName) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     any = if !any then false else true
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     shameSlacker(res, newPlayer)
@@ -487,16 +491,16 @@ joinGameRespond = (res, n, playerName) ->
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
     game = games[n]
-    if game.indexOf(newPlayer) >= 0
+    if game.genericIndexOf(newPlayer) >= 0
         res.send "You're already part of that game!"
         return
 
     # Add yourself to the nth game
-    for player, index in game
+    for player, genericIndex in game
         if player == '_'
-            game[index] = newPlayer
+            game[genericIndex] = newPlayer
             res.send "#{newPlayer} joined #{gameStr}!"
-            if game.indexOf('_') < 0
+            if game.genericIndexOf('_') < 0
                 balancePlayers(game)
                 gamePlayers = game.map (player) -> "@#{player}"
                 teamOneWinRate = getTeamStats(game[0], game[1])[game[1]]["winPercentage"]
@@ -519,11 +523,11 @@ abandonGameRespond = (res, n, playerName) ->
     senderPlayer = if isUndefined(playerName) then res.message.user.name else playerName
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     game = games[n]
-    playerIndex = game.indexOf(senderPlayer)
+    playerIndex = game.genericIndexOf(senderPlayer)
     if playerIndex < 0
         res.send "#{senderPlayer} is not part of Game #{n}"
         return
@@ -541,7 +545,7 @@ abandonGameRespond = (res, n, playerName) ->
 cancelGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     games.splice(n, 1)
@@ -602,7 +606,7 @@ kickFromNextGameRespond = (res) ->
 balanceGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     balancePlayers(games[n])
@@ -618,7 +622,7 @@ balanceNextGameRespond = (res) ->
 shuffleGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game index #{n}"
+        res.send "Invalid game genericIndex #{n}"
         return
 
     shufflePlayers(games[n])
@@ -637,7 +641,7 @@ finishGameRespond = (res) ->
         return
 
     game = games[0]
-    if game.indexOf('_') >= 0
+    if game.genericIndexOf('_') >= 0
         res.send "Next game isn't ready to go yet!"
         return
 
@@ -717,7 +721,7 @@ returnFromCleanseRespond = (res) ->
         res.reply "You are not on a cleanse, go play some foos!"
         return
 
-    cleanse.splice(cleanse.indexOf(senderName), 1)
+    cleanse.splice(cleanse.genericIndexOf(senderName), 1)
     saveCleanse()
 
     res.reply "Welcome back! Now go kick some ass"
@@ -909,11 +913,96 @@ startTournamentRespond = (res) ->
     # Initialize the game with the top 16 players
     # Save all players and their ranks at that time
     # Create teams by pairing 1-16, 2-15, etc.
-    return
+    if tournament['started']
+        res.send 'Tournament has already been started! Please cancel the current one if you wish to start a new one.'
+        return
+
+    tournament = {
+        'allPlayers': [],
+        'tournamentPlayers': [],
+        'tournamentTeams': [],
+        'allGames': [],
+        'accepted': false,
+        'started': true,
+    }
+
+    # Get all players
+    tournament['allPlayers'] = getRankings()
+
+    # Choose the top _TOURNAMENT_SIZE players to participate
+    tournament['tournamentPlayers'] = tournament['allPlayers'].slice(0, _TOURNAMENT_SIZE)
+
+    # Prepare games with log_2(_TOURNAMENT_SIZE/2) rounds
+    numRounds = Math.log2(_TOURNAMENT_SIZE/2)
+    for r in [numRounds-1..0] by -1
+        firstRound = false
+        if tournament['allGames'].length <= 0
+            firstRound = true
+
+        round = []
+        numGamesInRound = Math.pow(2, r)
+        for g in [0..numGamesInRound-1]
+            previousGames = false
+            if !firstRound
+                previousGames = [(2 * g), (2 * g) + 1]
+
+            nextGame = if numGamesInRound == 1 then false else Math.floor(g/2)
+
+            round.push {
+                'previousGames': previousGames,
+                'nextGame': nextGame,
+                'team1': false,
+                'team2': false,
+                'finalScore': '',
+                'finished': false,
+            }
+
+        tournament['allGames'].push round
+
+    prepareAndDistributeTournamentTeams()
+
+    saveTournament()
+    
+    res.send 'Tournament started!'
+
+
+prepareAndDistributeTournamentTeams = () ->
+    # Make teams by pairing 1-16, 2-15, etc.
+    for i in [0..(_TOURNAMENT_SIZE/2)-1]
+        tournament['tournamentTeams'][i] = [
+            tournament['tournamentPlayers'][i]['name'],
+            tournament['tournamentPlayers'][_TOURNAMENT_SIZE - 1 - i]['name'],
+        ]
+
+    # Populate the first round with players, alternating between placing at the top or bottom of the bracket
+    i = 0
+    teamsDistributed = 0
+    bracketSideTop = true
+    for team in tournament['tournamentTeams']
+        if bracketSideTop
+            game = tournament['allGames'][0][i]
+        else
+            game = tournament['allGames'][0][tournament['allGames'][0].length - 1 - i]
+
+        if !game['team1']
+            game['team1'] = team
+        else
+            game['team2'] = team
+
+        teamsDistributed += 1
+        if teamsDistributed == 4
+            teamsDistributed = 0
+            i += 1
+
+        bracketSideTop = !bracketSideTop
 
 cancelTournamentRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
     # Empty out the object containing the tournament info
-    tournament = {}
+    tournament = {'started': false}
     saveTournament()
 
     res.send "Tournament cancelled"
@@ -923,15 +1012,15 @@ showTournamentRespond = (res) ->
     # -------------|
     # goofy, daffy | 
     #              | 
-    #           [1]|--------------|
+    #         [9-1]|--------------|
     #              | goofy, daffy |
     # mick, minnie |              |
     # -------------|              |
-    #                          [3]|--- goofy, daffy
+    #                        [9-3]|--- goofy, daffy
     # -------------|              |
     # pluto, don   |              |
     #              | pluto, don   |
-    #           [2]|--------------|
+    #         [2-9]|--------------|
     #              |
     # noob, mike   |
     # -------------|
@@ -939,33 +1028,162 @@ showTournamentRespond = (res) ->
     return
 
 showTournamentPlayersRespond = (res) ->
-    # Just list all the players currently in the tournament and their ranks at the time of joining
-    return
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
+    # List all the players currently in the tournament and their ranks at the time of joining
+    strPlayers = ['Rank:\tName:']
+    for player in tournament['tournamentPlayers']
+        strPlayers.push "#{player.rank}\t#{player.name}"
+
+    res.send strPlayers.join('\n')
+
+showTournamentTeamsRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
+    # List all the teams currently in the tournament
+    strTeams = []
+    for t, i in tournament['tournamentTeams']
+        strTeams.push "Team #{i}:\n#{t[0]}, #{t[1]}"
+
+    res.send strTeams.join('\n\n')
 
 swapTournamentPlayersRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
     # Try to swap two players
-    # If the players have been accepted, error out
-    # If the first player isn't in the tournament, error out
-    # If the second player is already in the tournament, error out
+    
+    # If players have been accepted, error out
+    if tournament['playersAccepted']
+        res.send 'Tournament players have been accepted, you can\'t make modifications anymore!'
+        return
+
+    p1Name = res.match[1].trim().toLowerCase()
+    p2Name = res.match[2].trim().toLowerCase()
+
     # If the second player didn't exist when the tournament was started, error out
-    return
+    p2 = false
+    for p in tournament['allPlayers']
+        if p['name'] == p2Name
+            p2 = p
+            break
+
+    if !p2
+        res.send "Player \"#{p2Name}\" did not exist when the tournament was started!"
+        return
+
+    # If the first player isn't in the tournament, error out
+    p1Index = false
+    for i in [0..tournament['tournamentPlayers'].length-1]
+        if tournament['tournamentPlayers'][i]['name'] == p1Name
+            p1Index = i
+
+        # If the second player is already in the tournament, error out
+        if tournament['tournamentPlayers'][i]['name'] == p2Name
+            res.send "Player \"#{p2Name}\" is already in the tournament!"
+            return
+
+    if !p1Index
+        res.send "Player \"#{p1Name}\" is not in the tournament!"
+        return
+
+    tournament['tournamentPlayers'][p1Index] = p2
+
+    # Sort the players by the new rank
+    tournament['tournamentPlayers'] = tournament['tournamentPlayers'].sort(rankSort)
+
+    prepareAndDistributeTournamentTeams()
+    
+    saveTournament()
+
+    res.send "Successfully swapped \"#{p1Name}\" with \"#{p2Name}\". Teams have been rebalanced."
 
 acceptTournamentPlayersRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
     # Freeze the players
     tournament['playersAccepted'] = true
     saveTournament()
 
     res.send 'Players accepted, tournament is ready to go!'
 
-finishTournamentGameRespond = (res) ->
-    # Finish a game, as indicated in the tree diagram
-    # If the players have not been accepted, error out
-    # If the game does not exist, error out
-    # If the game does not have both teams yet, error out
-    # If the game has been finished already, error out
-    # If the game finished is the final game, print out a congratulatory message and fanfare, crowning the champions
-    return
+isInvalidGenericIndex = (genericIndex, maxLength) ->
+    return isNaN(genericIndex) || genericIndex < 0 || genericIndex >= maxLength
 
+finishTournamentGameRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
+    roundNum = parseInt(res.match[1].trim(), 10)
+    gameNum = parseInt(res.match[2].trim(), 10)
+    score = res.match[3].trim().split('-')
+    t1score = parseInt(score[0], 10)
+    t2score = parseInt(score[1], 10)
+
+    # Finish a game, as indicated in the tree diagram
+    # If players have not been accepted, error out
+    if !tournament['playersAccepted']
+        res.send 'Tournament players have not been accepted yet!'
+        return
+
+    # If the game does not exist, error out
+    if isInvalidGenericIndex(roundNum, tournament['allGames'].length)
+        res.send "Invalid round #{roundNum}"
+        return
+
+    round = tournament['allGames'][roundNum]
+    if isInvalidGenericIndex(gameNum, round.length)
+        res.send "Invalid game #{gameNum} in round #{roundNum}"
+        return
+    
+    game = round[gameNum]
+
+    # If the game does not have both teams yet, error out
+    if !game['team1'] || !game['team2']
+        res.send "Game #{gameNum} in round #{roundNum} isn't ready to go yet!"
+        return
+
+    # If the game has been finished already, error out
+    if game['finished']
+        res.send "Game #{gameNum} in round #{roundNum} has already finished!"
+        return
+
+    # If the game is even, error out
+    if t1score == t2score
+        res.send "Cannot finish a tournament game with an even score, someone must lose"
+        return
+
+    # Finish the game and record the score
+    game['finished'] = true
+    game['finalScore'] = "#{t1score}-#{t2score}"
+
+    # Determine the winner
+    winrar = if t1score > t2score then game['team1'] else game['team2']
+
+    if game['nextGame'] == false
+        # If the game finished is the final game, print out a congratulatory message and fanfare, crowning the champions
+        res.send "Tournament is over! Congratulations to the champions!"
+        res.send ":trophy::trophy::trophy: #{winrar} :trophy::trophy::trophy:"
+
+    else
+        # Add the team to the next game
+        nextGame = tournament['allGames'][roundNum+1][game['nextGame']]
+        if !nextGame['team1']
+            nextGame['team1'] = winrar
+        else
+            nextGame['team2'] = winrar
+
+        res.send "Finished game #{gameNum} in round #{roundNum}! Winning team is #{winrar} with #{t1score} goals"
+
+    saveTournament()
 
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
@@ -1011,8 +1229,9 @@ module.exports = (robot) ->
     robot.respond /cancel tournament/i, cancelTournamentRespond
     robot.respond /show tournament$/i, showTournamentRespond
     robot.respond /show tournament players/i, showTournamentPlayersRespond
+    robot.respond /show tournament teams/i, showTournamentTeamsRespond
     robot.respond /swap tournament player (\w+) with (\w+)/i, swapTournamentPlayersRespond
     robot.respond /accept tournament players/i, acceptTournamentPlayersRespond
-    robot.respond /finish tournament game (\d+) (\d-\d)/i, finishTournamentGameRespond
+    robot.respond /finish tournament game round (\d+) game (\d+) (\d-\d)/i, finishTournamentGameRespond
 
     robot.respond /the rules/i, theRulesRespond
