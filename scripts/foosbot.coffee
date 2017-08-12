@@ -36,7 +36,7 @@
 #   foosbot Cancel tournament - Cancel the currently running tournament (nothing will get saved)
 #   foosbot Show tournament - Show the current tournament tree
 #   foosbot Show tournament players - Show all the players involved in the tournament
-#   foosbot Show tournament Teams - Show all the teams involved in the tournament
+#   foosbot Show tournament teams - Show all the teams involved in the tournament
 #   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
 #   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
@@ -1054,6 +1054,7 @@ showTournamentRespond = (res) ->
         numGames = round.length
         currentLine = startingLine
         for i in [0..numGames-1]
+            game = round[i]
             gameStartingLine = currentLine
 
             # Draw the two lines on the top and bottom of the game
@@ -1061,10 +1062,20 @@ showTournamentRespond = (res) ->
             currentLine += width
             strTree[currentLine] += '-'.repeat(longestLineLength)
 
+            # Draw the team names in the 
+            currentLine = gameStartingLine + 1
+            if game['team1']
+                teamStr = " #{game['team1']}"
+                strTree[currentLine] += teamStr + ' '.repeat(longestLineLength - teamStr.length)
+            currentLine += width - 2
+            if game['team2']
+                teamStr = " #{game['team2']}"
+                strTree[currentLine] += teamStr + ' '.repeat(longestLineLength - teamStr.length)
+
             # Draw the score in the middle
             currentLine = gameStartingLine
             currentLine += (width/2)
-            score = if round[i]['finalScore'] then round[i]['finalScore'] else '?-?'
+            score = if game['finalScore'] then game['finalScore'] else '?-?'
             score = "[#{score}]"
             strTree[currentLine] += ' '.repeat(longestLineLength - score.length)
             strTree[currentLine] += score
@@ -1072,7 +1083,7 @@ showTournamentRespond = (res) ->
             # Add the vertical lines
             currentLine = gameStartingLine
             while currentLine <= gameStartingLine+width
-                if !(strTree[currentLine].endsWith('-') || strTree[currentLine].endsWith(']'))
+                if !(/(]|-|\w)$/.test(strTree[currentLine].trim()))
                     strTree[currentLine] += ' '.repeat(longestLineLength)
                 
                 strTree[currentLine] += '|'
@@ -1089,6 +1100,20 @@ showTournamentRespond = (res) ->
         startingLine = startingLine + (width/2)
         width += betweenGamesWidth
         betweenGamesWidth = width
+
+    # Draw the final winner line
+    winrar = '?'
+    finalGame = tournament['allGames'][tournament['allGames'].length-1][0]
+    if finalGame['finished']
+        score = finalGame['finalScore'].split('-')
+        t1score = parseInt(score[0], 10)
+        t2score = parseInt(score[1], 10)
+        if t1score > t2score
+            winrar = "#{finalGame['team1']}"
+        else
+            winrar = "#{finalGame['team2']}"
+    
+    strTree[startingLine] += "--- :trophy: #{winrar}"
 
     res.send strTree.join('\n')
 
