@@ -929,6 +929,10 @@ startTournamentRespond = (res) ->
     # Get all players
     tournament['allPlayers'] = getRankings()
 
+    if tournament['allPlayers'].length < _TOURNAMENT_SIZE
+        res.send "Not enough players to start tournament. Have: #{tournament['allPlayers'].length}; Need: #{_TOURNAMENT_SIZE}"
+        return
+
     # Choose the top _TOURNAMENT_SIZE players to participate
     tournament['tournamentPlayers'] = tournament['allPlayers'].slice(0, _TOURNAMENT_SIZE)
 
@@ -953,7 +957,7 @@ startTournamentRespond = (res) ->
                 'nextGame': nextGame,
                 'team1': false,
                 'team2': false,
-                'finalScore': '',
+                'finalScore': false,
                 'finished': false,
             }
 
@@ -1008,6 +1012,10 @@ cancelTournamentRespond = (res) ->
     res.send "Tournament cancelled"
 
 showTournamentRespond = (res) ->
+    if !tournament['started']
+        res.send 'Tournament not started yet!'
+        return
+
     # Print the tournament tree, in the following format
     # -------------|
     # goofy, daffy | 
@@ -1025,7 +1033,64 @@ showTournamentRespond = (res) ->
     # noob, mike   |
     # -------------|
 
-    return
+    startingLine = 0
+    width = 6
+    betweenGamesWidth = 2
+
+    numStartingGames = tournament['allGames'][0].length
+    numLines = (numStartingGames * width) + ((numStartingGames - 1) * betweenGamesWidth)
+
+    # Add one "column" for each round
+    strTree = new Array(numLines + 2).fill('') # Initialize with empty lines, to add to later
+    for round in tournament['allGames']
+        longestLineLength = 7
+        for game in round
+            if game['team1']
+                longestLineLength = Math.max(longestLineLength, "#{game['team1']}".length + 7)
+            if game['team2']
+                longestLineLength = Math.max(longestLineLength, "#{game['team2']}".length + 7)
+
+        # Draw each of the games
+        numGames = round.length
+        currentLine = startingLine
+        for i in [0..numGames-1]
+            gameStartingLine = currentLine
+
+            # Draw the two lines on the top and bottom of the game
+            strTree[currentLine] += '-'.repeat(longestLineLength)
+            currentLine += width
+            strTree[currentLine] += '-'.repeat(longestLineLength)
+
+            # Draw the score in the middle
+            currentLine = gameStartingLine
+            currentLine += (width/2)
+            score = if round[i]['finalScore'] then round[i]['finalScore'] else '?-?'
+            score = "[#{score}]"
+            strTree[currentLine] += ' '.repeat(longestLineLength - score.length)
+            strTree[currentLine] += score
+
+            # Add the vertical lines
+            currentLine = gameStartingLine
+            while currentLine <= gameStartingLine+width
+                if !(strTree[currentLine].endsWith('-') || strTree[currentLine].endsWith(']'))
+                    strTree[currentLine] += ' '.repeat(longestLineLength)
+                
+                strTree[currentLine] += '|'
+
+                currentLine += 1
+
+            if i < (numGames - 1)
+                endLine = (currentLine + betweenGamesWidth - 1)
+                while currentLine < endLine
+                    strTree[currentLine] += ' '.repeat(longestLineLength+1)
+                    currentLine += 1
+        
+        # Update where to start drawing the next round
+        startingLine = startingLine + (width/2)
+        width += betweenGamesWidth
+        betweenGamesWidth = width
+
+    res.send strTree.join('\n')
 
 showTournamentPlayersRespond = (res) ->
     if !tournament['started']
