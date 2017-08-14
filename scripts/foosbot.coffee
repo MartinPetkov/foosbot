@@ -159,10 +159,10 @@ gamesRespond = (res) ->
         return
 
     responseLines = []
-    for game, genericIndex in games
+    for game, index in games
         team1 = "#{game[0]} and #{game[1]}"
         team2 = "#{game[2]} and #{game[3]}"
-        responseLines.push "Game #{genericIndex}:\n#{team1}\nvs.\n#{team2}\n"
+        responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
 
     res.send responseLines.join('\n')
 
@@ -201,7 +201,7 @@ isInvalidIndex = (gameIndex) ->
 findPeopleForGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     gameStr = if n == 0 then "Next game" else "Game #{n}"
@@ -303,8 +303,8 @@ addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
     header = if isIndexColumn then "Rank" else "#{header}"
     longestLength = header.length
     longestHeaderLength = header.length
-    for stat, genericIndex in stats
-        fieldValue = if isIndexColumn then "#{genericIndex}" else formatFunc(stat[field])
+    for stat, index in stats
+        fieldValue = if isIndexColumn then "#{index}" else formatFunc(stat[field])
 
         longestLength = Math.max(longestLength, fieldValue.length)
 
@@ -322,16 +322,16 @@ addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
     lines[1] += '-'.repeat(headerLength)
 
     # Add the column for each statistic
-    for stat, genericIndex in stats
+    for stat, index in stats
         if isIndexColumn
-            fieldValue = rightPad("#{genericIndex+1}", longestLength)
+            fieldValue = rightPad("#{index+1}", longestLength)
         else
             fieldValue = rightPad(formatFunc(stat[field]), longestLength)
 
         if !isFirstColumn
-            lines[2+genericIndex] += "| "
+            lines[2+index] += "| "
 
-        lines[2+genericIndex] += "#{fieldValue}"
+        lines[2+index] += "#{fieldValue}"
 
 
 skillSort = (p1, p2) ->
@@ -483,7 +483,7 @@ joinGameRespond = (res, n, playerName) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     any = if !any then false else true
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     shameSlacker(res, newPlayer)
@@ -491,16 +491,16 @@ joinGameRespond = (res, n, playerName) ->
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
     game = games[n]
-    if game.genericIndexOf(newPlayer) >= 0
+    if game.indexOf(newPlayer) >= 0
         res.send "You're already part of that game!"
         return
 
     # Add yourself to the nth game
-    for player, genericIndex in game
+    for player, index in game
         if player == '_'
-            game[genericIndex] = newPlayer
+            game[index] = newPlayer
             res.send "#{newPlayer} joined #{gameStr}!"
-            if game.genericIndexOf('_') < 0
+            if game.indexOf('_') < 0
                 balancePlayers(game)
                 gamePlayers = game.map (player) -> "@#{player}"
                 teamOneWinRate = getTeamStats(game[0], game[1])[game[1]]["winPercentage"]
@@ -523,11 +523,11 @@ abandonGameRespond = (res, n, playerName) ->
     senderPlayer = if isUndefined(playerName) then res.message.user.name else playerName
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     game = games[n]
-    playerIndex = game.genericIndexOf(senderPlayer)
+    playerIndex = game.indexOf(senderPlayer)
     if playerIndex < 0
         res.send "#{senderPlayer} is not part of Game #{n}"
         return
@@ -545,7 +545,7 @@ abandonGameRespond = (res, n, playerName) ->
 cancelGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     games.splice(n, 1)
@@ -606,7 +606,7 @@ kickFromNextGameRespond = (res) ->
 balanceGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     balancePlayers(games[n])
@@ -622,7 +622,7 @@ balanceNextGameRespond = (res) ->
 shuffleGameRespond = (res, n) ->
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
     if isInvalidIndex(n)
-        res.send "Invalid game genericIndex #{n}"
+        res.send "Invalid game index #{n}"
         return
 
     shufflePlayers(games[n])
@@ -641,7 +641,7 @@ finishGameRespond = (res) ->
         return
 
     game = games[0]
-    if game.genericIndexOf('_') >= 0
+    if game.indexOf('_') >= 0
         res.send "Next game isn't ready to go yet!"
         return
 
@@ -721,7 +721,7 @@ returnFromCleanseRespond = (res) ->
         res.reply "You are not on a cleanse, go play some foos!"
         return
 
-    cleanse.splice(cleanse.genericIndexOf(senderName), 1)
+    cleanse.splice(cleanse.indexOf(senderName), 1)
     saveCleanse()
 
     res.reply "Welcome back! Now go kick some ass"
