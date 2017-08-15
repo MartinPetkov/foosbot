@@ -26,6 +26,8 @@
 #   foosbot Rematch - Repair your pride by playing the same game you just lost
 #   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
+#   foosbot Retire - Hang up the gloves for good
+#   foosbot Unretire - Rise up from the ashes of old age and get back to the table
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot Top <n> - Show the top n players in the rankings
@@ -51,6 +53,7 @@ gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
 previousRanksFile = 'previousranks.json'
 cleanseFile = 'cleanse.json'
+retireesFile = 'retirees.json'
 tournamentFile = 'tournament.json'
 
 
@@ -65,6 +68,7 @@ games = loadFile(gamesFile, [])
 finishedGames = loadFile(finishedGamesFile, [])
 previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
+retirees = loadFile(retireesFile, [])
 tournament = loadFile(tournamentFile, {'started': false})
 
 saveGames = () ->
@@ -78,6 +82,9 @@ savePreviousRanks = () ->
 
 saveCleanse = () ->
     fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
+
+saveRetirees = () ->
+    fs.writeFileSync(retireesFile, JSON.stringify(retirees))
 
 saveTournament = () ->
     fs.writeFileSync(tournamentFile, JSON.stringify(tournament))
@@ -172,6 +179,10 @@ startGameRespond = (res, startingPlayers) ->
     captain = res.message.user.name
     if captain in cleanse
         res.reply "You can't start any games, you're on a cleanse!"
+        return
+
+    if captain in retirees
+        res.reply "You can't start any games, you're retired!"
         return
 
     games.push [captain, '_', '_', '_']
@@ -354,6 +365,11 @@ getRankings = () ->
     # Get the stats for each player
     stats = getStats()
 
+    # Remove all retirees
+    for retiree in retirees
+        if retiree of stats
+            delete stats[retiree]
+
     # Make a sortable array
     rankings = []
     for player in Object.keys(stats)
@@ -477,7 +493,14 @@ joinGameRespond = (res, n, playerName) ->
         if isUndefined(playerName)
             res.reply "You can't join any games, you're on a cleanse!"
         else
-            res.send "#{newPlayer} cannot join games, they are on a cleanse! "
+            res.send "#{newPlayer} cannot join games, they are on a cleanse!"
+        return
+
+    if newPlayer in retirees
+        if isUndefined(playerName)
+            res.reply "You can't join any games, you're retired!"
+        else
+            res.send "#{newPlayer} cannot join games, they are retired!"
         return
 
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
@@ -1275,6 +1298,34 @@ finishTournamentGameRespond = (res) ->
 
     saveTournament()
 
+
+retireRespond = (res) ->
+    retiree = res.message.user.name.trim().toLowerCase()
+
+    if retiree in retirees
+        res.send "You've already retired, you can't double retire!"
+        return
+    
+    retirees.push retiree
+    
+    saveRetirees()
+
+    res.send "#{retiree} has permanently retired!"
+
+
+unretireRespond = (res) ->
+    retiree = res.message.user.name.trim().toLowerCase()
+
+    if !(retiree in retirees)
+        res.send "You're still kicking"
+        return
+    
+    retirees.splice(retirees.indexOf(retiree), 1)
+
+    saveRetirees()
+
+    res.send "#{retiree} is back in the action!"
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -1313,6 +1364,8 @@ module.exports = (robot) ->
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
     robot.respond /return from cleanse$/i, returnFromCleanseRespond
+    robot.respond /retire/i, retireRespond
+    robot.respond /unretire/i, unretireRespond
 
     # Tournament commands
     robot.respond /start tournament/i, startTournamentRespond
