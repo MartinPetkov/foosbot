@@ -155,7 +155,7 @@ rightPad = (s, finalLength) ->
     return s + ' '.repeat(numSpaces)
 
 
-round = (num, decimals) ->
+customRound = (num, decimals) ->
     return Number(Math.round(num+'e'+decimals)+'e-'+decimals);
 
 
@@ -291,7 +291,7 @@ getStats = () ->
 
     for player in Object.keys(stats)
         stats[player]['name'] = player
-        stats[player]['winPercentage'] = round((stats[player]['gamesWon'] / stats[player]['gamesPlayed']) * 100, 2)
+        stats[player]['winPercentage'] = customRound((stats[player]['gamesWon'] / stats[player]['gamesPlayed']) * 100, 2)
         stats[player]['trueskill'] = stats[player]['skill'][0] - (3 * stats[player]['skill'][1])
 
     return stats
@@ -966,7 +966,7 @@ startTournamentRespond = (res) ->
         if tournament['allGames'].length <= 0
             firstRound = true
 
-        round = []
+        gameRound = []
         numGamesInRound = Math.pow(2, r)
         for g in [0..numGamesInRound-1]
             previousGames = false
@@ -975,7 +975,7 @@ startTournamentRespond = (res) ->
 
             nextGame = if numGamesInRound == 1 then false else Math.floor(g/2)
 
-            round.push {
+            gameRound.push {
                 'previousGames': previousGames,
                 'nextGame': nextGame,
                 'team1': false,
@@ -984,7 +984,7 @@ startTournamentRespond = (res) ->
                 'finished': false,
             }
 
-        tournament['allGames'].push round
+        tournament['allGames'].push gameRound
 
     prepareAndDistributeTournamentTeams()
 
@@ -1065,19 +1065,19 @@ showTournamentRespond = (res) ->
 
     # Add one "column" for each round
     strTree = new Array(numLines + 2).fill('') # Initialize with empty lines, to add to later
-    for round in tournament['allGames']
+    for gameRound in tournament['allGames']
         longestLineLength = 7
-        for game in round
+        for game in gameRound
             if game['team1']
                 longestLineLength = Math.max(longestLineLength, "#{game['team1']}".length + 7)
             if game['team2']
                 longestLineLength = Math.max(longestLineLength, "#{game['team2']}".length + 7)
 
         # Draw each of the games
-        numGames = round.length
+        numGames = gameRound.length
         currentLine = startingLine
         for i in [0..numGames-1]
-            game = round[i]
+            game = gameRound[i]
             gameStartingLine = currentLine
 
             # Draw the two lines on the top and bottom of the game
@@ -1252,12 +1252,12 @@ finishTournamentGameRespond = (res) ->
         res.send "Invalid round #{roundNum}"
         return
 
-    round = tournament['allGames'][roundNum]
-    if isInvalidGenericIndex(gameNum, round.length)
+    gameRound = tournament['allGames'][roundNum]
+    if isInvalidGenericIndex(gameNum, gameRound.length)
         res.send "Invalid game #{gameNum} in round #{roundNum}"
         return
     
-    game = round[gameNum]
+    game = gameRound[gameNum]
 
     # If the game does not have both teams yet, error out
     if !game['team1'] || !game['team2']
