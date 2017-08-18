@@ -959,6 +959,17 @@ startTournamentRespond = (res) ->
     # Choose the top _TOURNAMENT_SIZE players to participate
     tournament['tournamentPlayers'] = tournament['allPlayers'].slice(0, _TOURNAMENT_SIZE)
 
+    prepareAndDistributeTournamentTeams()
+
+    saveTournament()
+    
+    res.send 'Tournament started!'
+
+
+prepareTournamentGames = () ->
+    # Clear the games
+    tournament['allGames'] = []
+
     # Prepare games with log_2(_TOURNAMENT_SIZE/2) rounds
     numRounds = Math.log2(_TOURNAMENT_SIZE/2)
     for r in [numRounds-1..0] by -1
@@ -986,14 +997,10 @@ startTournamentRespond = (res) ->
 
         tournament['allGames'].push gameRound
 
-    prepareAndDistributeTournamentTeams()
-
-    saveTournament()
-    
-    res.send 'Tournament started!'
-
-
 prepareAndDistributeTournamentTeams = () ->
+    # Prepare the games first
+    prepareTournamentGames()
+
     # Make teams by pairing 1-16, 2-15, etc.
     for i in [0..(_TOURNAMENT_SIZE/2)-1]
         tournament['tournamentTeams'][i] = [
