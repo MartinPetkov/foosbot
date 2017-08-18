@@ -1000,6 +1000,8 @@ prepareTournamentGames = () ->
         if tournament['allGames'].length <= 0
             firstRound = true
 
+        topTeam = true
+
         gameRound = []
         numGamesInRound = Math.pow(2, r)
         for g in [0..numGamesInRound-1]
@@ -1016,7 +1018,11 @@ prepareTournamentGames = () ->
                 'team2': false,
                 'finalScore': false,
                 'finished': false,
+                'topTeam': topTeam,
             }
+
+            # Make sure teams display correctly
+            topTeam = !topTeam
 
         tournament['allGames'].push gameRound
 
@@ -1309,7 +1315,14 @@ finishTournamentGameRespond = (res) ->
     game['finalScore'] = "#{t1score}-#{t2score}"
 
     # Determine the winner
-    winrar = if t1score > t2score then game['team1'] else game['team2']
+    winrar = game['team2']
+    losar = game['team1']
+    strScore = "#{t2score}-#{t1score}"
+    if t1score > t2score
+        winrar = game['team1']
+        losar = game['team2']
+        strScore = "#{t1score}-#{t2score}"
+
 
     if game['nextGame'] == false
         # If the game finished is the final game, print out a congratulatory message and fanfare, crowning the champions
@@ -1319,12 +1332,14 @@ finishTournamentGameRespond = (res) ->
     else
         # Add the team to the next game
         nextGame = tournament['allGames'][roundNum+1][game['nextGame']]
-        if !nextGame['team1']
+        if game['topTeam']
             nextGame['team1'] = winrar
         else
             nextGame['team2'] = winrar
 
-        res.send "Finished game #{gameNum} in round #{roundNum}! Winning team is #{winrar} with #{t1score} goals"
+        res.send "Finished game #{gameNum} in round #{roundNum}! #{winrar} beat #{losar} with a score of #{strScore}"
+
+        showTournamentRespond(res)
 
     saveTournament()
 
