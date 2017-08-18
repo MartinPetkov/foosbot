@@ -35,6 +35,7 @@
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
 #   foosbot Start tournament - Begin a new tournament (cannot run multiple tournaments at once)
+#   foosbot Start tournament with <n> people - Begin a new tournament with some number of people (must be a power of 2)
 #   foosbot Cancel tournament - Cancel the currently running tournament (nothing will get saved)
 #   foosbot Show tournament - Show the current tournament tree
 #   foosbot Show tournament players - Show all the players involved in the tournament
@@ -48,6 +49,9 @@
 
 fs = require 'fs'
 ts = require 'trueskill'
+
+# Must be a power of 2
+_DEFAULT_TOURNAMENT_SIZE = 16
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
@@ -69,7 +73,7 @@ finishedGames = loadFile(finishedGamesFile, [])
 previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
 retirees = loadFile(retireesFile, [])
-tournament = loadFile(tournamentFile, {'started': false})
+tournament = loadFile(tournamentFile, {'started': false, 'size': _DEFAULT_TOURNAMENT_SIZE})
 
 saveGames = () ->
     fs.writeFileSync(gamesFile, JSON.stringify(games))
@@ -110,9 +114,6 @@ getShameMsg = (res, player, timesPlayed) ->
     shameMsg = if timesPlayed >= 10 then _DEFAULT_SHAME_MESSAGE else res.random _SHAME_MESSAGES
     return "@#{player} #{shameMsg}"
 
-# Must be a power of 2
-_TOURNAMENT_SIZE = 16
-
 # Store shame
 shameFile = 'shame.json'
 shame = JSON.parse((fs.readFileSync shameFile, 'utf8').toString().trim())
@@ -148,6 +149,10 @@ shameSlacker = (res, player) ->
 
 isUndefined = (myvar) ->
     return typeof myvar == 'undefined'
+
+
+isPowerOfTwo = (mynum) ->
+    return (Math.log2(mynum) % 1) == 0
 
 
 rightPad = (s, finalLength) ->
@@ -932,6 +937,20 @@ rematchRespond = (res) ->
 
 
 # Tournament responders
+startTournamentWithNPeopleRespond = (res) ->
+    tournamentSize = parseInt(res.match[1].trim(), 10)
+
+    if !isPowerOfTwo(tournamentSize)
+        res.send "The number of must be a power of 2, and #{tournamentSize} is not!"
+        return
+
+    if tournamentSize < 4
+        res.send "You need at least 4 people to start a tournament!"
+        return
+
+    tournament['size'] = tournamentSize
+    startTournamentRespond(res)
+
 startTournamentRespond = (res) ->
     # Initialize the game with the top 16 players
     # Save all players and their ranks at that time
@@ -947,17 +966,18 @@ startTournamentRespond = (res) ->
         'allGames': [],
         'accepted': false,
         'started': true,
+        'size': tournament['size'],
     }
 
     # Get all players
     tournament['allPlayers'] = getRankings()
 
-    if tournament['allPlayers'].length < _TOURNAMENT_SIZE
-        res.send "Not enough players to start tournament. Have: #{tournament['allPlayers'].length}; Need: #{_TOURNAMENT_SIZE}"
+    if tournament['allPlayers'].length < tournament['size']
+        res.send "Not enough players to start tournament. Have: #{tournament['allPlayers'].length}; Need: #{tournament['size']}"
         return
 
-    # Choose the top _TOURNAMENT_SIZE players to participate
-    tournament['tournamentPlayers'] = tournament['allPlayers'].slice(0, _TOURNAMENT_SIZE)
+    # Choose the top tournament['size'] players to participate
+    tournament['tournamentPlayers'] = tournament['allPlayers'].slice(0, tournament['size'])
 
     prepareAndDistributeTournamentTeams()
 
@@ -965,13 +985,16 @@ startTournamentRespond = (res) ->
     
     res.send 'Tournament started!'
 
+    showTournamentRespond(res)
+
 
 prepareTournamentGames = () ->
     # Clear the games
     tournament['allGames'] = []
 
-    # Prepare games with log_2(_TOURNAMENT_SIZE/2) rounds
-    numRounds = Math.log2(_TOURNAMENT_SIZE/2)
+    # Prepare games with log_2(tournament['size']/2) rounds
+    numRounds = Math.log2(tournament['size']/2)
+
     for r in [numRounds-1..0] by -1
         firstRound = false
         if tournament['allGames'].length <= 0
@@ -1002,10 +1025,10 @@ prepareAndDistributeTournamentTeams = () ->
     prepareTournamentGames()
 
     # Make teams by pairing 1-16, 2-15, etc.
-    for i in [0..(_TOURNAMENT_SIZE/2)-1]
+    for i in [0..(tournament['size']/2)-1]
         tournament['tournamentTeams'][i] = [
             tournament['tournamentPlayers'][i]['name'],
-            tournament['tournamentPlayers'][_TOURNAMENT_SIZE - 1 - i]['name'],
+            tournament['tournamentPlayers'][tournament['size'] - 1 - i]['name'],
         ]
 
     # Populate the first round with players, alternating between placing at the top or bottom of the bracket
@@ -1036,7 +1059,7 @@ cancelTournamentRespond = (res) ->
         return
 
     # Empty out the object containing the tournament info
-    tournament = {'started': false}
+    tournament = {'started': false, 'size': _DEFAULT_TOURNAMENT_SIZE}
     saveTournament()
 
     res.send "Tournament cancelled"
@@ -1375,7 +1398,8 @@ module.exports = (robot) ->
     robot.respond /unretire/i, unretireRespond
 
     # Tournament commands
-    robot.respond /start tournament/i, startTournamentRespond
+    robot.respond /start tournament$/i, startTournamentRespond
+    robot.respond /start tournament with (\d+) people/i, startTournamentWithNPeopleRespond
     robot.respond /cancel tournament/i, cancelTournamentRespond
     robot.respond /show tournament$/i, showTournamentRespond
     robot.respond /show tournament players/i, showTournamentPlayersRespond
