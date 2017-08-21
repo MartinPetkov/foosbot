@@ -982,7 +982,7 @@ startTournamentRespond = (res) ->
     prepareAndDistributeTournamentTeams()
 
     saveTournament()
-    
+
     res.send 'Tournament started!'
 
     showTournamentRespond(res)
@@ -1077,8 +1077,8 @@ showTournamentRespond = (res) ->
 
     # Print the tournament tree, in the following format
     # -------------|
-    # goofy, daffy | 
-    #              | 
+    # goofy, daffy |
+    #              |
     #         [9-1]|--------------|
     #              | goofy, daffy |
     # mick, minnie |              |
@@ -1121,7 +1121,7 @@ showTournamentRespond = (res) ->
             currentLine += width
             strTree[currentLine] += '-'.repeat(longestLineLength)
 
-            # Draw the team names in the 
+            # Draw the team names in the
             currentLine = gameStartingLine + 1
             if game['team1']
                 teamStr = " #{game['team1']}"
@@ -1144,7 +1144,7 @@ showTournamentRespond = (res) ->
             while currentLine <= gameStartingLine+width
                 if !(/(]|-|\w)$/.test(strTree[currentLine].trim()))
                     strTree[currentLine] += ' '.repeat(longestLineLength)
-                
+
                 strTree[currentLine] += '|'
 
                 currentLine += 1
@@ -1154,7 +1154,7 @@ showTournamentRespond = (res) ->
                 while currentLine < endLine
                     strTree[currentLine] += ' '.repeat(longestLineLength+1)
                     currentLine += 1
-        
+
         # Update where to start drawing the next round
         startingLine = startingLine + (width/2)
         width += betweenGamesWidth
@@ -1171,7 +1171,7 @@ showTournamentRespond = (res) ->
             winrar = "#{finalGame['team1']}"
         else
             winrar = "#{finalGame['team2']}"
-    
+
     strTree[startingLine] += "--- :trophy: #{winrar}"
 
     res.send strTree.join('\n')
@@ -1206,7 +1206,7 @@ swapTournamentPlayersRespond = (res) ->
         return
 
     # Try to swap two players
-    
+
     # If players have been accepted, error out
     if tournament['playersAccepted']
         res.send 'Tournament players have been accepted, you can\'t make modifications anymore!'
@@ -1247,7 +1247,7 @@ swapTournamentPlayersRespond = (res) ->
     tournament['tournamentPlayers'] = tournament['tournamentPlayers'].sort(rankSort)
 
     prepareAndDistributeTournamentTeams()
-    
+
     saveTournament()
 
     res.send "Successfully swapped \"#{p1Name}\" with \"#{p2Name}\". Teams have been rebalanced."
@@ -1292,7 +1292,7 @@ finishTournamentGameRespond = (res) ->
     if isInvalidGenericIndex(gameNum, gameRound.length)
         res.send "Invalid game #{gameNum} in round #{roundNum}"
         return
-    
+
     game = gameRound[gameNum]
 
     # If the game does not have both teams yet, error out
@@ -1350,9 +1350,9 @@ retireRespond = (res) ->
     if retiree in retirees
         res.send "You've already retired, you can't double retire!"
         return
-    
+
     retirees.push retiree
-    
+
     saveRetirees()
 
     res.send "#{retiree} has permanently retired!"
@@ -1364,7 +1364,7 @@ unretireRespond = (res) ->
     if !(retiree in retirees)
         res.send "You're still kicking"
         return
-    
+
     retirees.splice(retirees.indexOf(retiree), 1)
 
     saveRetirees()
@@ -1387,7 +1387,7 @@ module.exports = (robot) ->
 
     robot.respond /start game$/i, startGameRespond
     robot.respond /start game(?: with)?(( \w+){1,3})$/i, startGameWithPlayersRespond
-    robot.respond /find people|find players$/i, findPeopleForNextGameRespond
+    robot.respond /find people$|find players$/i, findPeopleForNextGameRespond
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
     robot.respond /add (\w+)$/i, addToNextGameRespond
