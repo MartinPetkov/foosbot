@@ -729,6 +729,8 @@ theRulesRespond = (res) ->
         "If the ball goes dead on a far side, defense resets it from a corner",
         "If the ball flies off the table, reset to the middle",
         "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
+        "Everyone has 3 seconds after a drop to call a redrop",
+        "If a player takes both hands off the handles and clearly stops playing, play is considered paused",
         "Everyone shakes hands at the end of the game, no exceptions",
         ].map((rule, i) -> "#{i+1}. #{rule}").join('\n')
 
