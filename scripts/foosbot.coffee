@@ -595,12 +595,7 @@ cancelGameRespond = (res, n) ->
         return
 
     # Return any bets placed on that game
-    game = games[n]
-    for betterName of game['bets']
-        if betterName of accounts
-            accounts[betterName] += game['bets'][betterName]['amount']
-
-    saveAccounts()
+    returnBets(res, n)
 
     games.splice(n, 1)
     saveGames()
@@ -680,6 +675,7 @@ shuffleGameRespond = (res, n) ->
         return
 
     shufflePlayers(games[n]['players'])
+    returnBets(res, n)
     saveGames()
     gamesRespond(res)
 
@@ -1518,6 +1514,25 @@ cancelBetRespond = (res) ->
     saveGames()
 
     res.send "#{better} cancelled bet on game #{n}, they have #{accounts[better]}ƒ¢ left"
+
+returnBets = (res, n) ->
+    game = games[n]
+
+    if Object.keys(game['bets']).length < 1
+        return
+
+    for betterName of game['bets']
+        if betterName of accounts
+            accounts[betterName] += game['bets'][betterName]['amount']
+
+            res.send "#{betterName} got #{game['bets'][betterName]['amount']}ƒ¢ back, they have #{accounts[betterName]}ƒ¢ left"
+    
+    game['bets'] = {}
+
+    saveAccounts()
+    saveGames()
+
+    res.send "All bets returned for game #{n}"
 
 
 module.exports = (robot) ->
