@@ -188,8 +188,9 @@ gamesRespond = (res) ->
 
     responseLines = []
     for game, index in games
-        team1 = "#{game[0]} and #{game[1]}"
-        team2 = "#{game[2]} and #{game[3]}"
+        gamePlayers = game['players']
+        team1 = "#{gamePlayers[0]} and #{gamePlayers[1]}"
+        team2 = "#{gamePlayers[2]} and #{gamePlayers[3]}"
         responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
 
     res.send responseLines.join('\n')
@@ -206,7 +207,10 @@ startGameRespond = (res, startingPlayers) ->
         res.reply "You can't start any games, you're retired!"
         return
 
-    games.push [captain, '_', '_', '_']
+    games.push {
+        "players": [captain, '_', '_', '_'],
+        "bets": {}
+    }
     saveGames()
 
     shameSlacker(res, captain)
@@ -238,8 +242,8 @@ findPeopleForGameRespond = (res, n) ->
 
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
-    game = games[n]
-    currentPlayers = (player for player in game when player != "_")
+    gamePlayers = games[n]['players']
+    currentPlayers = (player for player in gamePlayers when player != "_")
     spotsLeft = 4 - currentPlayers.length
     if spotsLeft <= 0
         res.send "No spots left in #{gameStr}"
@@ -534,25 +538,25 @@ joinGameRespond = (res, n, playerName) ->
 
     gameStr = if n == 0 then "Next game" else "Game #{n}"
 
-    game = games[n]
-    if game.indexOf(newPlayer) >= 0
+    gamePlayers = games[n]['players']
+    if gamePlayers.indexOf(newPlayer) >= 0
         res.send "You're already part of that game!"
         return
 
     # Add yourself to the nth game
-    for player, index in game
+    for player, index in gamePlayers
         if player == '_'
-            game[index] = newPlayer
+            gamePlayers[index] = newPlayer
             res.send "#{newPlayer} joined #{gameStr}!"
             if game.indexOf('_') < 0
-                balancePlayers(game)
-                gamePlayers = game.map (player) -> "@#{player}"
-                teamOneWinRate = getTeamStats(game[0], game[1])[game[1]]["winPercentage"]
-                teamTwoWinRate = getTeamStats(game[2], game[3])[game[3]]["winPercentage"]
+                balancePlayers(gamePlayers)
+                atGamePlayers = gamePlayers.map (player) -> "@#{player}"
+                teamOneWinRate = getTeamStats(gamePlayers[0], gamePlayers[1])[gamePlayers[1]]["winPercentage"]
+                teamTwoWinRate = getTeamStats(gamePlayers[2], gamePlayers[3])[gamePlayers[3]]["winPercentage"]
 
-                teamsStr = "#{gamePlayers[0]} and #{gamePlayers[1]} (#{teamOneWinRate}%)\n"
+                teamsStr = "#{atGamePlayers[0]} and #{atGamePlayers[1]} (#{teamOneWinRate}%)\n"
                 teamsStr += "vs.\n"
-                teamsStr += "#{gamePlayers[2]} and #{gamePlayers[3]} (#{teamTwoWinRate}%)"
+                teamsStr += "#{atGamePlayers[2]} and #{atGamePlayers[3]} (#{teamTwoWinRate}%)"
                 res.send "#{gameStr} is ready to go! Teams:\n#{teamsStr}"
 
             saveGames()
@@ -570,17 +574,17 @@ abandonGameRespond = (res, n, playerName) ->
         res.send "Invalid game index #{n}"
         return
 
-    game = games[n]
-    playerIndex = game.indexOf(senderPlayer)
+    gamePlayers = games[n]['players']
+    playerIndex = gamePlayers.indexOf(senderPlayer)
     if playerIndex < 0
         res.send "#{senderPlayer} is not part of Game #{n}"
         return
 
-    game[playerIndex] = '_'
+    gamePlayers[playerIndex] = '_'
     saveGames()
 
     # Abandon the nth game, freeing your spot in it
-    remainingPlayers = [(player for player in game when player != "_")].join(', ')
+    remainingPlayers = [(player for player in gamePlayers when player != "_")].join(', ')
     res.send "#{senderPlayer} abandoned game #{n}. Remaining players: #{remainingPlayers}"
 
     gamesRespond(res)
@@ -653,7 +657,7 @@ balanceGameRespond = (res, n) ->
         res.send "Invalid game index #{n}"
         return
 
-    balancePlayers(games[n])
+    balancePlayers(games[n]['players'])
     saveGames()
     gamesRespond(res)
 
@@ -669,7 +673,7 @@ shuffleGameRespond = (res, n) ->
         res.send "Invalid game index #{n}"
         return
 
-    shufflePlayers(games[n])
+    shufflePlayers(games[n]['players'])
     saveGames()
     gamesRespond(res)
 
@@ -684,8 +688,8 @@ finishGameRespond = (res) ->
         res.send "No games are being played at the moment"
         return
 
-    game = games[0]
-    if game.indexOf('_') >= 0
+    gamePlayers = games[0]['players']
+    if gamePlayers.indexOf('_') >= 0
         res.send "Next game isn't ready to go yet!"
         return
 
@@ -695,10 +699,10 @@ finishGameRespond = (res) ->
         t1score = parseInt(result[0], 10)
         t2score = parseInt(result[1], 10)
 
-        t1p1 = game[0].trim().toLowerCase()
-        t1p2 = game[1].trim().toLowerCase()
-        t2p1 = game[2].trim().toLowerCase()
-        t2p2 = game[3].trim().toLowerCase()
+        t1p1 = gamePlayers[0].trim().toLowerCase()
+        t1p2 = gamePlayers[1].trim().toLowerCase()
+        t2p1 = gamePlayers[2].trim().toLowerCase()
+        t2p2 = gamePlayers[3].trim().toLowerCase()
 
         # The following is the format for game results
         resultDetails = {
@@ -1417,7 +1421,7 @@ betRespond = (res) ->
     teamToBetOn = parseInt(res.match[3].trim(), 10) - 1
 
     # TODO
-    teamMembers = games[n].slice(teamToBetOn*2, 2)
+    teamMembers = games[n]['players'].slice(teamToBetOn*2, 2)
 
     res.send "#{better} bet #{betAmount} on game #{n} for #{teamMembers}!"
     
