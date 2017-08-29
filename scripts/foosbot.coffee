@@ -58,7 +58,7 @@ ts = require 'trueskill'
 _DEFAULT_TOURNAMENT_SIZE = 16
 
 # Betting constants
-_STARTING_FOOSCOIN = 100.0
+_STARTING_FOOSCOIN = 30.0
 _MATCH_WIN_AMOUNT = 5.0
 
 gamesFile = 'games.json'
