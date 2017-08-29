@@ -43,6 +43,11 @@
 #   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
 #   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
+#   foosbot Finalize game <n> - Freeze the teams, and open up betting
+#   foosbot Buy in - Join the betting pool, starting off with 100ƒ¢
+#   foosbot My balance - Ask for your current balance
+#   foosbot Bet <x.y> on game <n> for team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
+#   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
 #
 # Author:
 #   MartinPetkov
@@ -53,13 +58,17 @@ ts = require 'trueskill'
 # Must be a power of 2
 _DEFAULT_TOURNAMENT_SIZE = 16
 
+# Betting constants
+_STARTING_FOOSCOIN = 100
+_MATCH_WIN_AMOUNT = 5
+
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
 previousRanksFile = 'previousranks.json'
 cleanseFile = 'cleanse.json'
 retireesFile = 'retirees.json'
 tournamentFile = 'tournament.json'
-
+accountsFile = 'accounts.json'
 
 loadFile = (fileName, initialValue) ->
     # Initialize the file if it does not exist
@@ -68,30 +77,37 @@ loadFile = (fileName, initialValue) ->
 
     return JSON.parse((fs.readFileSync fileName, 'utf8').toString().trim())
 
+saveFile = (fileName, data) ->
+    fs.writeFileSync(fileName, JSON.stringify(data))
+
 games = loadFile(gamesFile, [])
 finishedGames = loadFile(finishedGamesFile, [])
 previousRanks = loadFile(previousRanksFile, {})
 cleanse = loadFile(cleanseFile, [])
 retirees = loadFile(retireesFile, [])
 tournament = loadFile(tournamentFile, {'started': false, 'size': _DEFAULT_TOURNAMENT_SIZE})
+accounts = loadFile(accountsFile, {})
 
 saveGames = () ->
-    fs.writeFileSync(gamesFile, JSON.stringify(games))
+    saveFile(gamesFile, games)
 
 saveFinishedGames = () ->
-    fs.writeFileSync(finishedGamesFile, JSON.stringify(finishedGames))
+    saveFile(finishedGamesFile, finishedGames)
 
 savePreviousRanks = () ->
-    fs.writeFileSync(previousRanksFile, JSON.stringify(previousRanks))
+    saveFile(previousRanksFile, previousRanks)
 
 saveCleanse = () ->
-    fs.writeFileSync(cleanseFile, JSON.stringify(cleanse))
+    saveFile(cleanseFile, cleanse)
 
 saveRetirees = () ->
-    fs.writeFileSync(retireesFile, JSON.stringify(retirees))
+    saveFile(retireesFile, retirees)
 
 saveTournament = () ->
-    fs.writeFileSync(tournamentFile, JSON.stringify(tournament))
+    saveFile(tournamentFile, tournament)
+
+saveAccounts = () ->
+  saveFile(accountsFile, accounts)
 
 
 # Date diff calculations
@@ -1373,6 +1389,45 @@ unretireRespond = (res) ->
 
     res.send "#{retiree} is back in the action!"
 
+# Betting commands
+finalizeGameNRespond = (res) ->
+    n = parseInt(res.match[1].trim(), 10)
+
+    res.send "Finalized game #{n}"
+
+buyInRespond = (res) ->
+    highRoller = res.message.user.name.trim().toLowerCase()
+
+    res.send "#{highRoller} bought in! They start with #{_STARTING_FOOSCOIN}ƒ¢"
+    
+    
+myBalanceRespond = (res) ->
+    me = res.message.user.name.trim().toLowerCase()
+
+    # TODO
+    balance = -1
+
+    res.send "#{me}, you have #{balance}ƒ¢"
+    
+    robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i,
+betRespond = (res) ->
+    better = res.message.user.name.trim().toLowerCase()
+    betAmount = parseFloat(res.match[1].trim(), 10)
+    n = parseInt(res.match[2].trim(), 10)
+    teamToBetOn = parseInt(res.match[3].trim(), 10) - 1
+
+    # TODO
+    teamMembers = games[n].slice(teamToBetOn*2, 2)
+
+    res.send "#{better} bet #{betAmount} on game #{n} for #{teamMembers}!"
+    
+cancelBetRespond = (res) ->
+    better = res.message.user.name.trim().toLowerCase()
+    n = parseInt(res.match[1].trim(), 10)
+
+    res.send "#{better} cancelled bet on game #{n}"
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -1424,5 +1479,12 @@ module.exports = (robot) ->
     robot.respond /swap tournament player (\w+) with (\w+)/i, swapTournamentPlayersRespond
     robot.respond /accept tournament players/i, acceptTournamentPlayersRespond
     robot.respond /finish tournament game round (\d+) game (\d+) (\d-\d)/i, finishTournamentGameRespond
+
+    # Betting commands
+    robot.respond /finalize game (\d+)/i, finalizeGameNRespond
+    robot.respond /buy in/i, buyInRespond
+    robot.respond /my balance/i, myBalanceRespond
+    robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i, betRespond
+    robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     robot.respond /the rules/i, theRulesRespond
