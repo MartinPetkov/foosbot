@@ -190,6 +190,22 @@ gamesRespond = (res) ->
         gamePlayers = game['players']
         team1 = "#{gamePlayers[0]} and #{gamePlayers[1]}"
         team2 = "#{gamePlayers[2]} and #{gamePlayers[3]}"
+
+        # TODO: Calculate bets for each team
+        team1Bets = 0.0
+        team2Bets = 0.0
+        for betterName of game['bets']
+            bet = game['bets'][betterName]
+            if bet['team'] == 1
+                team1Bets += bet['amount']
+            else
+                team2Bets += bet['amount']
+        
+        if team1Bets > 0
+            team1 += " (#{team1Bets}ƒ¢ bet)"
+        if team2Bets > 0
+            team2 += " (#{team2Bets}ƒ¢ bet)"
+
         responseLines.push "Game #{index}:\n#{team1}\nvs.\n#{team2}\n"
 
     res.send responseLines.join('\n')
@@ -1422,8 +1438,6 @@ unretireRespond = (res) ->
 
 
 # Betting commands
-# TODO:
-# - Distribute bets when a game is finished
 buyInRespond = (res) ->
     highRoller = res.message.user.name.trim().toLowerCase()
 
