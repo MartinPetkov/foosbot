@@ -22,7 +22,7 @@
 #   foosbot Cancel game <n> - Cancel the nth game
 #   foosbot Balance game <n> - Balance the nth game based on player ranks
 #   foosbot Shuffle game <n> - Randomly shuffle the players in the nth game
-#   foosbot Finish game <team1_score>-<team2_score>, ... - Finish the next game and record the results (of possibly multiple games)
+#   foosbot Finish game <team1_score>-<team2_score> - Finish the next game in order and record the results
 #   foosbot Rematch - Repair your pride by playing the same game you just lost
 #   foosbot Go on [a] cleanse - Go on a cleanse, unable to be added to a game
 #   foosbot Return from cleanse - Return refreshed, ready to take on the champions
@@ -43,7 +43,6 @@
 #   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
 #   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
-#   foosbot Finalize game <n> - Freeze the teams, and open up betting
 #   foosbot Buy in - Join the betting pool, starting off with 100ƒ¢
 #   foosbot My balance - Ask for your current balance
 #   foosbot Bet <x.y> on game <n> for team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
@@ -59,8 +58,8 @@ ts = require 'trueskill'
 _DEFAULT_TOURNAMENT_SIZE = 16
 
 # Betting constants
-_STARTING_FOOSCOIN = 100
-_MATCH_WIN_AMOUNT = 5
+_STARTING_FOOSCOIN = 100.0
+_MATCH_WIN_AMOUNT = 5.0
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
@@ -548,15 +547,14 @@ joinGameRespond = (res, n, playerName) ->
         if player == '_'
             gamePlayers[index] = newPlayer
             res.send "#{newPlayer} joined #{gameStr}!"
-            if game.indexOf('_') < 0
+            if gamePlayers.indexOf('_') < 0
                 balancePlayers(gamePlayers)
-                atGamePlayers = gamePlayers.map (player) -> "@#{player}"
                 teamOneWinRate = getTeamStats(gamePlayers[0], gamePlayers[1])[gamePlayers[1]]["winPercentage"]
                 teamTwoWinRate = getTeamStats(gamePlayers[2], gamePlayers[3])[gamePlayers[3]]["winPercentage"]
 
-                teamsStr = "#{atGamePlayers[0]} and #{atGamePlayers[1]} (#{teamOneWinRate}%)\n"
+                teamsStr = "@#{gamePlayers[0]} and @#{gamePlayers[1]} (#{teamOneWinRate}%)\n"
                 teamsStr += "vs.\n"
-                teamsStr += "#{atGamePlayers[2]} and #{atGamePlayers[3]} (#{teamTwoWinRate}%)"
+                teamsStr += "@#{gamePlayers[2]} and @#{gamePlayers[3]} (#{teamTwoWinRate}%)"
                 res.send "#{gameStr} is ready to go! Teams:\n#{teamsStr}"
 
             saveGames()
@@ -564,7 +562,7 @@ joinGameRespond = (res, n, playerName) ->
             return
 
     # Cannot join if full
-    res.send "No spots #{gameStr}"
+    res.send "No spots in #{gameStr}"
 
 
 abandonGameRespond = (res, n, playerName) ->
@@ -595,6 +593,14 @@ cancelGameRespond = (res, n) ->
     if isInvalidIndex(n)
         res.send "Invalid game index #{n}"
         return
+
+    # Return any bets placed on that game
+    game = games[n]
+    for betterName of game['bets']
+        if betterName of accounts
+            accounts[betterName] += game['bets'][betterName]['amount']
+
+    saveAccounts()
 
     games.splice(n, 1)
     saveGames()
@@ -688,42 +694,67 @@ finishGameRespond = (res) ->
         res.send "No games are being played at the moment"
         return
 
-    gamePlayers = games[0]['players']
+    game = games[0]
+    gamePlayers = game['players']
     if gamePlayers.indexOf('_') >= 0
         res.send "Next game isn't ready to go yet!"
         return
 
-    results = res.match[1].trim().split(",")
-    for result in results
-        result = result.trim().split('-')
-        t1score = parseInt(result[0], 10)
-        t2score = parseInt(result[1], 10)
+    result = res.match[1].trim().split('-')
+    t1score = parseInt(result[0], 10)
+    t2score = parseInt(result[1], 10)
 
-        t1p1 = gamePlayers[0].trim().toLowerCase()
-        t1p2 = gamePlayers[1].trim().toLowerCase()
-        t2p1 = gamePlayers[2].trim().toLowerCase()
-        t2p2 = gamePlayers[3].trim().toLowerCase()
+    t1p1 = gamePlayers[0].trim().toLowerCase()
+    t1p2 = gamePlayers[1].trim().toLowerCase()
+    t2p1 = gamePlayers[2].trim().toLowerCase()
+    t2p2 = gamePlayers[3].trim().toLowerCase()
 
-        # The following is the format for game results
-        resultDetails = {
-            'team1': {
-                'player1': t1p1,
-                'player2': t1p2,
-                'score': t1score
-            },
-            'team2': {
-                'player1': t2p1,
-                'player2': t2p2,
-                'score': t2score
-            }
+    # The following is the format for game results
+    resultDetails = {
+        'team1': {
+            'player1': t1p1,
+            'player2': t1p2,
+            'score': t1score
+        },
+        'team2': {
+            'player1': t2p1,
+            'player2': t2p2,
+            'score': t2score
         }
+    }
 
-        for player in [t1p1,t1p2,t2p1,t2p2]
-            updateShame(player)
+    for player in [t1p1,t1p2,t2p1,t2p2]
+        updateShame(player)
 
-        # Record the scores and save them
-        finishedGames.push resultDetails
+    # Record the scores and save them
+    finishedGames.push resultDetails
 
+    # Award a prize to the winners of the match, equal to the goal difference
+    matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
+    matchWinAmount = Math.abs(t1score - t2score)
+    for matchWinner in matchWinners
+        if matchWinner of accounts
+            accounts[matchWinner] += matchWinAmount
+            res.send "#{matchWinner} won #{matchWinAmount}ƒ¢!"
+
+    # Distribute bets to the bet winners
+    winningTeam = if t1score > t2score then 1 else 2
+    betWinners = []
+    totalBetPool = 0
+    for betterName of game['bets']
+        totalBetPool += game['bets'][betterName]['amount']
+        if game['bets'][betterName]['team'] == winningTeam
+            betWinners.push(betterName)
+    
+    if betWinners.length > 0
+        betWinAmount = totalBetPool / betWinners.length
+        for betWinner in betWinners
+            if betWinner of accounts
+                accounts[betWinner] += betWinAmount
+                res.send "#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
+
+
+    saveAccounts()
     saveFinishedGames()
 
     # Show changed rankings since last time
@@ -1393,14 +1424,20 @@ unretireRespond = (res) ->
 
     res.send "#{retiree} is back in the action!"
 
+
 # Betting commands
-finalizeGameNRespond = (res) ->
-    n = parseInt(res.match[1].trim(), 10)
-
-    res.send "Finalized game #{n}"
-
+# TODO:
+# - Distribute bets when a game is finished
 buyInRespond = (res) ->
     highRoller = res.message.user.name.trim().toLowerCase()
+
+    if highRoller of accounts
+        res.send "You have already bought in, you can't buy in again"
+        return
+
+    accounts[highRoller] = _STARTING_FOOSCOIN
+
+    saveAccounts()
 
     res.send "#{highRoller} bought in! They start with #{_STARTING_FOOSCOIN}ƒ¢"
     
@@ -1408,28 +1445,79 @@ buyInRespond = (res) ->
 myBalanceRespond = (res) ->
     me = res.message.user.name.trim().toLowerCase()
 
-    # TODO
-    balance = -1
+    # Error out if person has not bought in yet
+    if !(me of accounts)
+        res.send 'You have not bought in yet!'
+        return
+    
+    balance = accounts[me]
 
     res.send "#{me}, you have #{balance}ƒ¢"
-    
-    robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i,
+
 betRespond = (res) ->
     better = res.message.user.name.trim().toLowerCase()
     betAmount = parseFloat(res.match[1].trim(), 10)
     n = parseInt(res.match[2].trim(), 10)
-    teamToBetOn = parseInt(res.match[3].trim(), 10) - 1
+    teamToBetOn = parseInt(res.match[3].trim(), 10)
 
-    # TODO
-    teamMembers = games[n]['players'].slice(teamToBetOn*2, 2)
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
 
-    res.send "#{better} bet #{betAmount} on game #{n} for #{teamMembers}!"
+    game = games[n]
+
+    if !(better of accounts)
+        res.send "You have not bought in yet!"
+        return
+
+    # Temporarily bring back the previous bet, then restore it if there are insufficient funds
+    currentBetAmount = if better of game['bets'] then game['bets'][better]['amount'] else 0
+    accounts[better] += currentBetAmount
+    if accounts[better] < betAmount
+        accounts[better] -= currentBetAmount
+        res.send "You can't bet #{betAmount}ƒ¢, you only have #{accounts[better]}ƒ¢!"
+        return
+
+    # Place the bet, taking it out of the better's account
+    accounts[better] -= betAmount
+    game['bets'][better] = {
+        'amount': betAmount,
+        'team': teamToBetOn
+    }
+
+    sliceIndex = (teamToBetOn-1)*2
+    teamMembers = game['players'].slice(sliceIndex, sliceIndex + 2)
+
+    saveAccounts()
+    saveGames()
+
+    res.send "#{better} bet #{betAmount}ƒ¢ on game #{n} for #{teamMembers}! They have #{accounts[better]}ƒ¢ left"
     
 cancelBetRespond = (res) ->
     better = res.message.user.name.trim().toLowerCase()
     n = parseInt(res.match[1].trim(), 10)
 
-    res.send "#{better} cancelled bet on game #{n}"
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
+
+    game = games[n]
+
+    if !(better of game['bets'])
+        res.send "You have not placed a bet on game #{n}"
+        return
+
+    if !(better of accounts)
+        res.send "You couldn't have place a bet on game #{n}, you haven't bought in yet!"
+        return
+
+    accounts[better] += game['bets'][better]['amount']
+    delete game['bets'][better]
+
+    saveAccounts()
+    saveGames()
+
+    res.send "#{better} cancelled bet on game #{n}, they have #{accounts[better]}ƒ¢ left"
 
 
 module.exports = (robot) ->
@@ -1459,7 +1547,7 @@ module.exports = (robot) ->
     robot.respond /shuffle game$/i, shuffleNextGameRespond
     robot.respond /rematch/i, rematchRespond
 
-    robot.respond /finish game +((\d-\d)( *, *\d-\d)*)$/i, finishGameRespond
+    robot.respond /finish game +(\d-\d)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /(?:stats|rankings)(( \w+)+)$/i, rankingsForPlayersRespond
     robot.respond /top (\d+).*$/i, topNRankingsRespond
@@ -1485,7 +1573,6 @@ module.exports = (robot) ->
     robot.respond /finish tournament game round (\d+) game (\d+) (\d-\d)/i, finishTournamentGameRespond
 
     # Betting commands
-    robot.respond /finalize game (\d+)/i, finalizeGameNRespond
     robot.respond /buy in/i, buyInRespond
     robot.respond /my balance/i, myBalanceRespond
     robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i, betRespond
