@@ -45,7 +45,7 @@
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
 #   foosbot Start betting - Join the betting pool
 #   foosbot My balance - Ask for your current balance
-#   foosbot Bet <x.y> on game <n> team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
+#   foosbot Bet <x.y> on game <n> team (0|1) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
 #
 # Author:
@@ -192,12 +192,12 @@ gamesRespond = (res) ->
         team1 = "#{gamePlayers[0]} and #{gamePlayers[1]}"
         team2 = "#{gamePlayers[2]} and #{gamePlayers[3]}"
 
-        # TODO: Calculate bets for each team
+        # Calculate bets for each team
         team1Bets = 0.0
         team2Bets = 0.0
         for betterName of game['bets']
             bet = game['bets'][betterName]
-            if bet['team'] == 1
+            if bet['team'] == 0
                 team1Bets += bet['amount']
             else
                 team2Bets += bet['amount']
@@ -804,7 +804,7 @@ finishGameRespond = (res) ->
 
     # Remove the game from the list
     games.splice(0,1)
-    # saveGames()
+    saveGames()
 
     res.send "Results saved"
 
@@ -1506,6 +1506,10 @@ betRespond = (res) ->
 
     game = games[n]
 
+    if game['players'].indexOf(better) >= 0
+        res.send "You can't bet on a game you're playing in!"
+        return
+
     if !(better of accounts)
         res.send "You have not bought in yet!"
         return
@@ -1525,7 +1529,7 @@ betRespond = (res) ->
         'team': teamToBetOn
     }
 
-    sliceIndex = (teamToBetOn-1)*2
+    sliceIndex = teamToBetOn * 2
     teamMembers = game['players'].slice(sliceIndex, sliceIndex + 2)
 
     saveAccounts()
@@ -1634,7 +1638,7 @@ module.exports = (robot) ->
     # Betting commands
     robot.respond /start betting/i, startBettingRespond
     robot.respond /my balance/i, myBalanceRespond
-    robot.respond /bet (\d+\.\d+) on game (\d+) team ([12])/i, betRespond
+    robot.respond /bet (\d+\.\d+) on game (\d+) team ([01])/i, betRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     robot.respond /the rules/i, theRulesRespond
