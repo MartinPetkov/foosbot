@@ -1492,7 +1492,7 @@ myBalanceRespond = (res) ->
     
     balance = customRound(accounts[me], 4)
 
-    res.send "#{me}, you have #{balance}ƒ¢"
+    res.send "@#{me}, you have #{balance}ƒ¢"
 
 betRespond = (res) ->
     better = res.message.user.name.trim().toLowerCase()
