@@ -45,7 +45,7 @@
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
 #   foosbot Start betting - Join the betting pool
 #   foosbot My balance - Ask for your current balance
-#   foosbot Bet <x.y> on game <n> for team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
+#   foosbot Bet <x.y> on game <n> team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
 #
 # Author:
@@ -60,6 +60,7 @@ _DEFAULT_TOURNAMENT_SIZE = 16
 # Betting constants
 _STARTING_FOOSCOIN = 30.0
 _MATCH_WIN_AMOUNT = 5.0
+_HOUSE_PRIZE_BASE = 5.0
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
@@ -721,6 +722,8 @@ finishGameRespond = (res) ->
     t2p1 = gamePlayers[2].trim().toLowerCase()
     t2p2 = gamePlayers[3].trim().toLowerCase()
 
+    oldStats = getStats()
+
     # The following is the format for game results
     resultDetails = {
         'team1': {
@@ -737,6 +740,11 @@ finishGameRespond = (res) ->
 
     for player in [t1p1,t1p2,t2p1,t2p2]
         updateShame(player)
+
+        if !(player of oldStats)
+            oldStats[player] = {
+                'trueskill': 0.0
+            }
 
     # Record the scores and save them
     finishedGames.push resultDetails
@@ -757,23 +765,35 @@ finishGameRespond = (res) ->
     for betterName of game['bets']
         if game['bets'][betterName]['team'] == winningTeam
             betWinnersTotalPool += game['bets'][betterName]['amount']
+            # Return the winner's bet, but don't announce it
+            accounts[betterName] += game['bets'][betterName]['amount']
             betWinners.push(betterName)
         else
             prizePool += game['bets'][betterName]['amount']
         
-    
-    if (betWinners.length) > 0 && (prizePool > 0)
+    # Give extra money from the house, based on trueskill
+    winningTeamPlayers = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
+    losingTeamPlayers = if t1score > t2score then [t2p1,t2p2] else [t1p1,t1p2]
+    winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
+    losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
+    housePrizeProportion = winningTeamTrueskill / losingTeamTrueskill
+    housePrize = customRound(housePrizeProportion * _HOUSE_PRIZE_BASE, 2)
+
+    if betWinners.length > 0
         for betWinner in betWinners
             if betWinner of accounts
-                # Return the winner's bet, but don't announce it
-                accounts[betWinner] += game['bets'][betterName]['amount']
+                # Award the house prize
+                accounts[betWinner] += housePrize
+                res.send "#{betWinner} won #{housePrize}ƒ¢ from the house!"
 
-                # Determine how much this winner should get, proportional to what they bet
-                proportion = customRound(game['bets'][betWinner]['amount'] / betWinnersTotalPool, 4)
-                betWinAmount = customRound(prizePool * proportion, 4)
+                # Distribute the prize pool from the losers
+                if prizePool > 0
+                    # Determine how much this winner should get, proportional to what they bet
+                    proportion = customRound(game['bets'][betWinner]['amount'] / betWinnersTotalPool, 4)
+                    betWinAmount = customRound(prizePool * proportion, 4)
 
-                accounts[betWinner] += betWinAmount
-                res.send "#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
+                    accounts[betWinner] += betWinAmount
+                    res.send "#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
 
 
     saveAccounts()
@@ -784,7 +804,7 @@ finishGameRespond = (res) ->
 
     # Remove the game from the list
     games.splice(0,1)
-    saveGames()
+    # saveGames()
 
     res.send "Results saved"
 
@@ -1470,7 +1490,7 @@ myBalanceRespond = (res) ->
         res.send 'You have not bought in yet!'
         return
     
-    balance = accounts[me]
+    balance = customRound(accounts[me], 4)
 
     res.send "#{me}, you have #{balance}ƒ¢"
 
@@ -1614,7 +1634,7 @@ module.exports = (robot) ->
     # Betting commands
     robot.respond /start betting/i, startBettingRespond
     robot.respond /my balance/i, myBalanceRespond
-    robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i, betRespond
+    robot.respond /bet (\d+\.\d+) on game (\d+) team ([12])/i, betRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     robot.respond /the rules/i, theRulesRespond
