@@ -32,6 +32,7 @@
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot Top <n> - Show the top n players in the rankings
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
+#   foosbot Team history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of your past games with a specific teammate
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
 #   foosbot Start tournament - Begin a new tournament (cannot run multiple tournaments at once)
