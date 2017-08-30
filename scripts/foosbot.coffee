@@ -752,16 +752,26 @@ finishGameRespond = (res) ->
     # Distribute bets to the bet winners
     winningTeam = if t1score > t2score then 1 else 2
     betWinners = []
-    totalBetPool = 0
+    betWinnersTotalPool = 0
+    prizePool = 0
     for betterName of game['bets']
-        totalBetPool += game['bets'][betterName]['amount']
         if game['bets'][betterName]['team'] == winningTeam
+            betWinnersTotalPool += game['bets'][betterName]['amount']
             betWinners.push(betterName)
+        else
+            prizePool += game['bets'][betterName]['amount']
+        
     
-    if betWinners.length > 0
-        betWinAmount = totalBetPool / betWinners.length
+    if (betWinners.length) > 0 && (prizePool > 0)
         for betWinner in betWinners
             if betWinner of accounts
+                # Return the winner's bet, but don't announce it
+                accounts[betWinner] += game['bets'][betterName]['amount']
+
+                # Determine how much this winner should get, proportional to what they bet
+                proportion = customRound(game['bets'][betWinner]['amount'] / betWinnersTotalPool, 4)
+                betWinAmount = customRound(prizePool * proportion, 4)
+
                 accounts[betWinner] += betWinAmount
                 res.send "#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
 
