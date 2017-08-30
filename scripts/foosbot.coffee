@@ -948,11 +948,23 @@ teamStatsRespond = (res) ->
     res.send response
 
 
-historyRespond = (res) ->
+historyMeRespond = (res) ->
     me = res.match[1] == 'me'
-    playerName = if me then res.message.user.name else res.match[1].trim()
-
+    playerName = if me then res.message.user.name else res.match[1].trim().toLowerCase()
     numPastGames = if isUndefined(res.match[2]) then 5 else parseInt(res.match[2].trim(), 10)
+
+    historyRespond(res, me, numPastGames, playerName)
+
+teamHistoryRespond = (res) ->
+    me = res.match[1] == 'me'
+    playerName = if me then res.message.user.name else res.match[1].trim().toLowerCase()
+    otherPlayerName = res.match[2].trim().toLowerCase()
+    numPastGames = if isUndefined(res.match[3]) then 5 else parseInt(res.match[3].trim(), 10)
+
+    historyRespond(res, me, numPastGames, playerName, otherPlayerName)
+
+
+historyRespond = (res, me, numPastGames, playerName, otherPlayerName) ->
     gamesFound = 0
     pastGames = []
 
@@ -960,7 +972,20 @@ historyRespond = (res) ->
     for i in [finishedGames.length-1..0] by -1
         fgame = finishedGames[i]
 
-        if playerName in [fgame["team1"]["player1"], fgame["team1"]["player2"], fgame["team2"]["player1"], fgame["team2"]["player2"]]
+        fgPlayers = [fgame["team1"]["player1"], fgame["team1"]["player2"], fgame["team2"]["player1"], fgame["team2"]["player2"]]
+        keepGame = false
+        if isUndefined(otherPlayerName)
+            # Single-player history
+            if playerName in fgPlayers
+                keepGame = true
+        else
+            # Team history
+            fgTeam1 = [fgame["team1"]["player1"], fgame["team1"]["player2"]]
+            fgTeam2 = [fgame["team2"]["player1"], fgame["team2"]["player2"]]
+            if ((playerName in fgTeam1) && (otherPlayerName in fgTeam1)) || ((playerName in fgTeam2) && (otherPlayerName in fgTeam2))
+                keepGame = true
+
+        if keepGame
             pastGames.unshift(fgame)
             gamesFound += 1
 
@@ -1616,7 +1641,8 @@ module.exports = (robot) ->
     robot.respond /top (\d+).*$/i, topNRankingsRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
-    robot.respond /history (\w+)( \d+)?$/i, historyRespond
+    robot.respond /history (\w+)( \d+)?$/i, historyMeRespond
+    robot.respond /team history (\w+) (\w+)( \d+)?$/i, teamHistoryRespond
     robot.respond /team stats (\w+) (\w+)$/i, teamStatsRespond
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
