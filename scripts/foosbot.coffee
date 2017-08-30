@@ -758,7 +758,7 @@ finishGameRespond = (res) ->
             res.send "#{matchWinner} won #{matchWinAmount}ƒ¢!"
 
     # Distribute bets to the bet winners
-    winningTeam = if t1score > t2score then 1 else 2
+    winningTeam = if t1score > t2score then 0 else 1
     betWinners = []
     betWinnersTotalPool = 0
     prizePool = 0
@@ -784,7 +784,7 @@ finishGameRespond = (res) ->
             if betWinner of accounts
                 # Award the house prize
                 accounts[betWinner] += housePrize
-                res.send "#{betWinner} won #{housePrize}ƒ¢ from the house!"
+                res.send "@#{betWinner} won #{housePrize}ƒ¢ from the house!"
 
                 # Distribute the prize pool from the losers
                 if prizePool > 0
@@ -793,7 +793,7 @@ finishGameRespond = (res) ->
                     betWinAmount = customRound(prizePool * proportion, 4)
 
                     accounts[betWinner] += betWinAmount
-                    res.send "#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
+                    res.send "@#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
 
 
     saveAccounts()
