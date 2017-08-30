@@ -43,7 +43,7 @@
 #   foosbot Swap tournament player <current_player> with <new_player> - Replace a player in the tournament (only works with players that had ranks when the tournament was started)
 #   foosbot Accept tournament players - Confirm the player selection and officially begin the tournament
 #   foosbot Finish tournament game round <n1> game <n2> <team1_score>-<team2_score> - Finish a game and have the team move on
-#   foosbot Buy in - Join the betting pool, starting off with 100ƒ¢
+#   foosbot Start betting - Join the betting pool
 #   foosbot My balance - Ask for your current balance
 #   foosbot Bet <x.y> on game <n> for team (1|2) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 1 or 2 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
@@ -1438,7 +1438,7 @@ unretireRespond = (res) ->
 
 
 # Betting commands
-buyInRespond = (res) ->
+startBettingRespond = (res) ->
     highRoller = res.message.user.name.trim().toLowerCase()
 
     if highRoller of accounts
@@ -1602,7 +1602,7 @@ module.exports = (robot) ->
     robot.respond /finish tournament game round (\d+) game (\d+) (\d-\d)/i, finishTournamentGameRespond
 
     # Betting commands
-    robot.respond /buy in/i, buyInRespond
+    robot.respond /start betting/i, startBettingRespond
     robot.respond /my balance/i, myBalanceRespond
     robot.respond /bet (\d+\.\d+) on game (\d+) for team ([12])/i, betRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
