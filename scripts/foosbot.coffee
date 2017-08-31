@@ -1664,7 +1664,7 @@ module.exports = (robot) ->
 
     # Betting commands
     robot.respond /start betting/i, startBettingRespond
-    robot.respond /(my )?balance/i, myBalanceRespond
+    robot.respond /(my )?balance$/i, myBalanceRespond
     robot.respond /bet (\d+\.\d+) on game (\d+) team ([01])/i, betRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
