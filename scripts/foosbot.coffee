@@ -752,11 +752,20 @@ finishGameRespond = (res) ->
 
     # Award a prize to the winners of the match, equal to the goal difference
     matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
+    matchLosersScore = if t1score > t2score then t2score else t1score
+
     matchWinAmount = Math.abs(t1score - t2score)
-    for matchWinner in matchWinners
-        if matchWinner of accounts
-            accounts[matchWinner] += matchWinAmount
-            res.send "#{matchWinner} won #{matchWinAmount}ƒ¢!"
+    if matchLosersScore == 0
+        matchWinAmount = matchWinAmount * 2
+        res.send "Double fooscoins for a shutout win!"
+
+    if matchWinAmount < 2
+        res.send "No fooscoins for a bloody win!"
+    else
+        for matchWinner in matchWinners
+            if matchWinner of accounts
+                accounts[matchWinner] += matchWinAmount
+                res.send "#{matchWinner} won #{matchWinAmount}ƒ¢!"
 
     # Distribute bets to the bet winners
     winningTeam = if t1score > t2score then 0 else 1
