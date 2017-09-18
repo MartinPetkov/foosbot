@@ -590,6 +590,9 @@ abandonGameRespond = (res, n, playerName) ->
         res.send "Invalid game index #{n}"
         return
 
+    # Return any bets placed on that game
+    returnBets(res, n)
+
     gamePlayers = games[n]['players']
     playerIndex = gamePlayers.indexOf(senderPlayer)
     if playerIndex < 0
