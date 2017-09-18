@@ -772,7 +772,7 @@ finishGameRespond = (res) ->
     matchWinnersScore = if t1score > t2score then t1score else t2score
     matchLosersScore = if t1score > t2score then t2score else t1score
 
-    matchWinAmount = matchWinnersScore
+    matchWinAmount = Math.abs(t1score - t2score)
 
     # Determine how much of the prize pool to give, with the goals as a percentage
     if prizePool > 0
@@ -786,7 +786,7 @@ finishGameRespond = (res) ->
         if matchWinner of accounts
             accounts[matchWinner] += matchWinAmount
             res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
-        
+
     # Give extra money from the house, based on trueskill
     winningTeamPlayers = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
     losingTeamPlayers = if t1score > t2score then [t2p1,t2p2] else [t1p1,t1p2]
