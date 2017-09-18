@@ -753,24 +753,7 @@ finishGameRespond = (res) ->
     # Record the scores and save them
     finishedGames.push resultDetails
 
-    # Award a prize to the winners of the match, equal to the goal difference
-    matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
-    matchLosersScore = if t1score > t2score then t2score else t1score
-
-    matchWinAmount = Math.abs(t1score - t2score)
-    if matchLosersScore == 0
-        matchWinAmount = matchWinAmount * 2
-        res.send "Double fooscoins for a shutout win!"
-
-    if matchWinAmount < 2
-        res.send "No fooscoins for a bloody win!"
-    else
-        for matchWinner in matchWinners
-            if matchWinner of accounts
-                accounts[matchWinner] += matchWinAmount
-                res.send "#{matchWinner} won #{matchWinAmount}ƒ¢!"
-
-    # Distribute bets to the bet winners
+    # Return the bets to the bet winners
     winningTeam = if t1score > t2score then 0 else 1
     betWinners = []
     betWinnersTotalPool = 0
@@ -783,6 +766,26 @@ finishGameRespond = (res) ->
             betWinners.push(betterName)
         else
             prizePool += game['bets'][betterName]['amount']
+
+    # Award a prize to the winners of the match, equal to the number of goals scored
+    matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
+    matchWinnersScore = if t1score > t2score then t1score else t2score
+    matchLosersScore = if t1score > t2score then t2score else t1score
+
+    matchWinAmount = matchWinnersScore
+
+    # Determine how much of the prize pool to give, with the goals as a percentage
+    if prizePool > 0
+        matchWinAmount += prizePool * (matchWinnersScore / 100.0)
+
+    if matchLosersScore == 0
+        matchWinAmount = matchWinAmount * 2
+        res.send "Double fooscoins for a shutout win!"
+
+    for matchWinner in matchWinners
+        if matchWinner of accounts
+            accounts[matchWinner] += matchWinAmount
+            res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
         
     # Give extra money from the house, based on trueskill
     winningTeamPlayers = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
@@ -837,6 +840,7 @@ theRulesRespond = (res) ->
         "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
         "Everyone has 3 seconds after a drop to call a redrop",
         "If a player takes both hands off the handles and clearly stops playing, play is considered paused",
+        "If you get shut out, you have to crawl under the table"
         "Everyone shakes hands at the end of the game, no exceptions",
         ].map((rule, i) -> "#{i+1}. #{rule}").join('\n')
 
