@@ -32,7 +32,8 @@
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot Top <n> - Show the top n players in the rankings
 #   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
-#   foosbot Team history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of your past games with a specific teammate
+#   foosbot Team history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of past games with a specific teammate
+#   foosbot Rival history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of past games against a specific rival
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
 #   foosbot Start tournament - Begin a new tournament (cannot run multiple tournaments at once)
@@ -477,10 +478,10 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
         if p of previousRanks
             prevRank = previousRanks[p]
             rankDiff = prevRank - curRank
-            prefix = if rankDiff < 0 then '' else '+'
+            prefix = if rankDiff < 0 then '' else if rankDiff == 0 then '=' else '+'
         else
             rankDiff = curRank
-            prefix = '='
+            prefix = '~'
 
         rankChanges += "#{prefix}#{rankDiff} -> #{curRank} #{p}\n"
 
@@ -972,16 +973,22 @@ historyMeRespond = (res) ->
 
     historyRespond(res, me, numPastGames, playerName)
 
-teamHistoryRespond = (res) ->
+multiHistoryRespond = (res, rivals) ->
     me = res.match[1] == 'me'
     playerName = if me then res.message.user.name else res.match[1].trim().toLowerCase()
     otherPlayerName = res.match[2].trim().toLowerCase()
     numPastGames = if isUndefined(res.match[3]) then 5 else parseInt(res.match[3].trim(), 10)
 
-    historyRespond(res, me, numPastGames, playerName, otherPlayerName)
+    historyRespond(res, me, numPastGames, playerName, otherPlayerName, rivals)
+
+teamHistoryRespond = (res) ->
+    multiHistoryRespond(res, false)
+
+rivalHistoryRespond = (res) ->
+    multiHistoryRespond(res, true)
 
 
-historyRespond = (res, me, numPastGames, playerName, otherPlayerName) ->
+historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
     gamesFound = 0
     pastGames = []
 
@@ -999,8 +1006,11 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName) ->
             # Team history
             fgTeam1 = [fgame["team1"]["player1"], fgame["team1"]["player2"]]
             fgTeam2 = [fgame["team2"]["player1"], fgame["team2"]["player2"]]
-            if ((playerName in fgTeam1) && (otherPlayerName in fgTeam1)) || ((playerName in fgTeam2) && (otherPlayerName in fgTeam2))
-                keepGame = true
+
+            if rivals
+                keepGame = ((playerName in fgTeam1) && (otherPlayerName in fgTeam2)) || ((playerName in fgTeam2) && (otherPlayerName in fgTeam1))
+            else
+                keepGame = ((playerName in fgTeam1) && (otherPlayerName in fgTeam1)) || ((playerName in fgTeam2) && (otherPlayerName in fgTeam2))
 
         if keepGame
             pastGames.unshift(fgame)
@@ -1009,8 +1019,15 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName) ->
             if gamesFound >= numPastGames
                 break
 
-    pronoun = if me then 'Your' else "#{playerName}'s"
-    strGames = "#{pronoun} last #{numPastGames} games:"
+
+    pronoun = "#{playerName}'s"
+    together = ""
+    if !isUndefined(otherPlayerName)
+        pronoun = "#{playerName} and #{otherPlayerName}'s"
+        together = if rivals then " against each other" else " together"
+
+
+    strGames = "#{pronoun} last #{numPastGames} games#{together}:"
     for pg, i in pastGames
         score = '\t'
         team1 = [pg["team1"]["player1"], pg["team1"]["player2"]]
@@ -1660,6 +1677,7 @@ module.exports = (robot) ->
 
     robot.respond /history (\w+)( \d+)?$/i, historyMeRespond
     robot.respond /team history (\w+) (\w+)( \d+)?$/i, teamHistoryRespond
+    robot.respond /rival history (\w+) (\w+)( \d+)?$/i, rivalHistoryRespond
     robot.respond /team stats (\w+) (\w+)$/i, teamStatsRespond
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
