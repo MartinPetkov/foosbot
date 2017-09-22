@@ -768,26 +768,6 @@ finishGameRespond = (res) ->
         else
             prizePool += game['bets'][betterName]['amount']
 
-    # Award a prize to the winners of the match, equal to the number of goals scored
-    matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
-    matchWinnersScore = if t1score > t2score then t1score else t2score
-    matchLosersScore = if t1score > t2score then t2score else t1score
-
-    matchWinAmount = Math.abs(t1score - t2score)
-
-    # Determine how much of the prize pool to give, with the goals as a percentage
-    if prizePool > 0
-        matchWinAmount += prizePool * (matchWinnersScore / 100.0)
-
-    if matchLosersScore == 0
-        matchWinAmount = matchWinAmount * 2
-        res.send "Double fooscoins for a shutout win!"
-
-    for matchWinner in matchWinners
-        if matchWinner of accounts
-            accounts[matchWinner] += matchWinAmount
-            res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
-
     # Give extra money from the house, based on trueskill
     winningTeamPlayers = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
     losingTeamPlayers = if t1score > t2score then [t2p1,t2p2] else [t1p1,t1p2]
@@ -811,6 +791,30 @@ finishGameRespond = (res) ->
 
                     accounts[betWinner] += betWinAmount
                     res.send "@#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
+
+    # Award a prize to the winners of the match, equal to the number of goals scored
+    matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
+    matchWinnersScore = if t1score > t2score then t1score else t2score
+    matchLosersScore = if t1score > t2score then t2score else t1score
+
+    matchWinAmount = Math.abs(t1score - t2score)
+
+    # Give more if the trueskill difference is larger
+    matchWinAmount += housePrizeProportion * 2 * matchWinAmount
+
+    # Determine how much of the opposing prize pool to give, with the goals as a percentage
+    if prizePool > 0
+        matchWinAmount += prizePool * (matchWinnersScore / 100.0)
+
+    # Double the win amount in case of a shutout
+    if matchLosersScore == 0
+        matchWinAmount = matchWinAmount * 2
+        res.send "Double fooscoins for a shutout win!"
+
+    for matchWinner in matchWinners
+        if matchWinner of accounts
+            accounts[matchWinner] += matchWinAmount
+            res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
 
 
     saveAccounts()
