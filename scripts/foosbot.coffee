@@ -1031,7 +1031,9 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
         together = if rivals then " against each other" else " together"
 
 
-    strGames = "#{pronoun} last #{numPastGames} games#{together}:"
+    gamesWon = 0
+    title = "#{pronoun} last #{numPastGames} games#{together}:"
+    strGames = ""
     for pg, i in pastGames
         score = '\t'
         team1 = [pg["team1"]["player1"], pg["team1"]["player2"]]
@@ -1046,6 +1048,7 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
             otherTeamScore = pg['team1']['score']
 
         if thisTeamScore > otherTeamScore
+            gamesWon += 1
             score = process.env.WIN_EMOJI
             if otherTeamScore == 0
                 score += process.env.SHUTOUT_EMOJI
@@ -1070,6 +1073,8 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
             teams = [pg['team2']['player2'], pg['team2']['player1'], pg['team1']['player1'], pg['team1']['player2']]
 
         strGames += "\n#{score}\t#{teams[0]} and #{teams[1]} vs. #{teams[2]} and #{teams[3]}"
+
+    strGames = title + "\nK-D ratio: #{gamesWon}-#{gamesFound - gamesWon}\n" + strGames
 
     res.send strGames
 
