@@ -49,12 +49,14 @@
 #   foosbot My balance - Ask for your current balance
 #   foosbot Bet <x.y> on game <n> team (0|1) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
+#   foosbot Tip - Get a helpful tip!
 #
 # Author:
 #   MartinPetkov
 
 fs = require 'fs'
 ts = require 'trueskill'
+schedule = require 'node-schedule'
 
 # Must be a power of 2
 _DEFAULT_TOURNAMENT_SIZE = 16
@@ -63,6 +65,52 @@ _DEFAULT_TOURNAMENT_SIZE = 16
 _STARTING_FOOSCOIN = 30.0
 _MATCH_WIN_AMOUNT = 5.0
 _HOUSE_PRIZE_BASE = 5.0
+
+
+# Rules and tips
+_THE_RULES = [
+    "No spinning",
+    "If someone scores with the first shot, it doesn't count",
+    "If someone scores by hitting the ball before it reaches the far wall, it doesn't count",
+    "Any player can score from any position",
+    "When one team reaches 5 points, both teams switch defense/offense players",
+    "If a shot goes in but comes out, it counts as long as it made the *dank* sound",
+    "The last goal cannot be an own goal, it must be scored by the opposing team",
+    "If unsure whether a goal counts, the team that got scored on makes the call",
+    "If the ball goes dead anywhere except the far sides, reset to the middle",
+    "If the ball goes dead on a far side, defense resets it from a corner",
+    "If the ball flies off the table, reset to the middle",
+    "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
+    "Everyone has 3 seconds after a drop to call a redrop",
+    "If a player takes both hands off the handles and clearly stops playing, play is considered paused",
+    "If you get shut out, you have to crawl under the table"
+    "Everyone shakes hands at the end of the game, no exceptions",
+]
+_TIPS = [
+    "Keep your goalie in the center if you're not sure what to do",
+    "Take your time and control the ball for a better shot",
+    "Stagger your players when defending",
+    "Try not to shoot straight through the center",
+    "Keep your players the ball is behind them, so you don't block your partner's shot",
+    "Keep your defenders pointed inwards to make angle shots harder",
+    "To slapshot, place the bottom of your plam flat out, push forward, then pull up and grab",
+    "Close the gaps that lead to your net",
+    "Don't instinctively move your players back when the ball goes past them, you might score on yourself",
+    "Watch the ball, not the player, don't be fooled by dekes",
+    "Keep moving! Don't stop and pause just because your opponent did",
+    "Watch the hands and react to that, they're a tell before the actual move",
+    "Try to avoid patterns in your movement",
+    "Try to avoid crossing your goalie and your defenders, that leaves a gap through which to shoot",
+    "Guard the posts, but try not to linger there",
+    "Try to control the ball instead of shooting right away",
+    "Don't move for no reason if you're in a good position",
+    "Don't panic on slow shots! Concentrate and punish back",
+    "Keep an eye on your players more than on the ball when it's not in your half",
+    "Vary your shots, don't do the same thing from the same position over and over",
+    "Forget mistakes quickly and start thinking about the next play",
+    "Don't talk too much or you'll get distracted and make a mistake",
+]
+
 
 gamesFile = 'games.json'
 finishedGamesFile = 'finishedgames.json'
@@ -830,24 +878,10 @@ finishGameRespond = (res) ->
     res.send "Results saved"
 
 theRulesRespond = (res) ->
-    res.send [
-        "No spinning",
-        "If someone scores with the first shot, it doesn't count",
-        "If someone scores by hitting the ball before it reaches the far wall, it doesn't count",
-        "Any player can score from any position",
-        "When one team reaches 5 points, both teams switch defense/offense players",
-        "If a shot goes in but comes out, it counts as long as it made the *dank* sound",
-        "The last goal cannot be an own goal, it must be scored by the opposing team",
-        "If unsure whether a goal counts, the team that got scored on makes the call",
-        "If the ball goes dead anywhere except the far sides, reset to the middle",
-        "If the ball goes dead on a far side, defense resets it from a corner",
-        "If the ball flies off the table, reset to the middle",
-        "If it wasn't organized by foosbot, it's a friendly game and does not affect rankings",
-        "Everyone has 3 seconds after a drop to call a redrop",
-        "If a player takes both hands off the handles and clearly stops playing, play is considered paused",
-        "If you get shut out, you have to crawl under the table"
-        "Everyone shakes hands at the end of the game, no exceptions",
-        ].map((rule, i) -> "#{i+1}. #{rule}").join('\n')
+    res.send _THE_RULES.map((rule, i) -> "#{i+1}. #{rule}").join('\n')
+
+tipRespond = (res) ->
+    res.send res.random _TIPS
 
 
 goOnACleanseRespond = (res) ->
@@ -1074,7 +1108,7 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
 
         strGames += "\n#{score}\t#{teams[0]} and #{teams[1]} vs. #{teams[2]} and #{teams[3]}"
 
-    strGames = title + "\nK-D ratio: #{gamesWon}-#{gamesFound - gamesWon}\n" + strGames
+    strGames = title + "\nK-D ratio: #{gamesWon}-#{gamesFound-gamesWon}\n" + strGames
 
     res.send strGames
 
@@ -1651,6 +1685,15 @@ returnBets = (res, n) ->
     res.send "All bets returned for game #{n}"
 
 
+tipOfTheDaySend = (robot) ->
+    return () ->
+        topd = 'Here is your Tip Of The Day™!\n\n'
+        randomTip = _TIPS[Math.round(Math.random() * (_TIPS.length - 1))]
+        topd += randomTip
+
+        robot.send room: process.env.FOOSBALL_ROOM_ID, topd
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -1711,4 +1754,7 @@ module.exports = (robot) ->
     robot.respond /bet (\d+\.\d+) on game (\d+) team ([01])/i, betRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
+    # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
+    robot.respond /tip/i, tipRespond
+    schedule.scheduleJob "0 30 11 * * 1-5", tipOfTheDaySend(robot)
