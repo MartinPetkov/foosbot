@@ -858,6 +858,7 @@ finishGameRespond = (res) ->
     if matchLosersScore == 0
         matchWinAmount = matchWinAmount * 2
         res.send "Double fooscoins for a shutout win!"
+        res.send "https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif"
 
     for matchWinner in matchWinners
         if matchWinner of accounts
