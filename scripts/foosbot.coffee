@@ -31,9 +31,9 @@
 #   foosbot Rankings|Leaderboard - Show the leaderboard
 #   foosbot Rankings|Stats <player1> [<player2> ...] - Show the stats for specific players
 #   foosbot Top <n> - Show the top n players in the rankings
-#   foosbot History <player>|me [<numPastGames>] - Show a summary of your past games
-#   foosbot Team history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of past games with a specific teammate
-#   foosbot Rival history <player>|me <otherPlayer> [<numPastGames>] - Show a summary of past games against a specific rival
+#   foosbot History <player>|me [<numPastGames>|all] - Show a summary of your past games
+#   foosbot Team history <player>|me <otherPlayer> [<numPastGames>|all] - Show a summary of past games with a specific teammate
+#   foosbot Rival history <player>|me <otherPlayer> [<numPastGames>|all] - Show a summary of past games against a specific rival
 #   foosbot Team Stats <playerOne>|me <playerTwo>|me|all - Shows the team stats for two players, or all pairings of <playerOne>
 #   foosbot The rules - Show the rules we play by
 #   foosbot Start tournament - Begin a new tournament (cannot run multiple tournaments at once)
@@ -1008,7 +1008,7 @@ teamStatsRespond = (res) ->
 historyMeRespond = (res) ->
     me = res.match[1] == 'me'
     playerName = if me then res.message.user.name else res.match[1].trim().toLowerCase()
-    numPastGames = if isUndefined(res.match[2]) then 5 else parseInt(res.match[2].trim(), 10)
+    numPastGames = if isUndefined(res.match[2]) then 5 else res.match[2].trim()
 
     historyRespond(res, me, numPastGames, playerName)
 
@@ -1016,7 +1016,7 @@ multiHistoryRespond = (res, rivals) ->
     me = res.match[1] == 'me'
     playerName = if me then res.message.user.name else res.match[1].trim().toLowerCase()
     otherPlayerName = res.match[2].trim().toLowerCase()
-    numPastGames = if isUndefined(res.match[3]) then 5 else parseInt(res.match[3].trim(), 10)
+    numPastGames = if isUndefined(res.match[3]) then 5 else res.match[3].trim()
 
     historyRespond(res, me, numPastGames, playerName, otherPlayerName, rivals)
 
@@ -1030,6 +1030,9 @@ rivalHistoryRespond = (res) ->
 historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
     gamesFound = 0
     pastGames = []
+
+    if !(numPastGames == 'all')
+        numPastGames = parseInt(numPastGames, 10)
 
     # Collect the last n games
     for i in [finishedGames.length-1..0] by -1
@@ -1055,7 +1058,7 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
             pastGames.unshift(fgame)
             gamesFound += 1
 
-            if gamesFound >= numPastGames
+            if numPastGames != 'all' && gamesFound >= numPastGames
                 break
 
 
@@ -1728,9 +1731,9 @@ module.exports = (robot) ->
     robot.respond /top (\d+).*$/i, topNRankingsRespond
     robot.respond /reset previous rankings$/i, resetPreviousRankings
 
-    robot.respond /history (\w+)( \d+)?$/i, historyMeRespond
-    robot.respond /team history (\w+) (\w+)( \d+)?$/i, teamHistoryRespond
-    robot.respond /rival history (\w+) (\w+)( \d+)?$/i, rivalHistoryRespond
+    robot.respond /history (\w+) ?(\d+|all)?$/i, historyMeRespond
+    robot.respond /team history (\w+) (\w+) ?(\d+|all)?$/i, teamHistoryRespond
+    robot.respond /rival history (\w+) (\w+) ?(\d+|all)?$/i, rivalHistoryRespond
     robot.respond /team stats (\w+) (\w+)$/i, teamStatsRespond
 
     robot.respond /go on (a )?cleanse$/i, goOnACleanseRespond
