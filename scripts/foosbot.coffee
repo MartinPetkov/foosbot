@@ -572,11 +572,10 @@ balancePlayers = (game) ->
     game[2] = playersWithRanks[1]["name"]
     game[3] = playersWithRanks[2]["name"]
 
-shufflePlayers = (game) ->
-    i = game.length
-    while --i
-        j = Math.floor(Math.random() * (i+1))
-        [game[i], game[j]] = [game[j], game[i]] # use pattern matching to swap
+shufflePlayers = (n) ->
+    # Simply rotate the last 3 players left
+    game = games[n]["players"]
+    games[n]["players"] = [game[0]].concat(game.slice(2).concat(game[1]))
 
 joinGameRespond = (res, n, playerName) ->
     newPlayer = if isUndefined(playerName) then res.message.user.name else playerName
@@ -744,12 +743,12 @@ shuffleGameRespond = (res, n) ->
         res.send "Invalid game index #{n}"
         return
 
-    shufflePlayers(games[n]['players'])
+    shufflePlayers(n)
     returnBets(res, n)
     saveGames()
     gamesRespond(res)
 
-    res.send "Game #{n} randomly shuffled"
+    res.send "Game #{n} shuffled"
 
 shuffleNextGameRespond = (res) ->
     shuffleGameRespond(res, 0)
