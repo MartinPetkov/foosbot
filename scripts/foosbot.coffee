@@ -452,9 +452,10 @@ skillSort = (p1, p2) ->
     # Order by win percentage last
     return if p1['winPercentage'] >= p2['winPercentage'] then -1 else 1
 
-getRankings = () ->
+getRankings = (stats) ->
     # Get the stats for each player
-    stats = getStats()
+    if isUndefined(stats)
+        stats = getStats()
 
     # Remove all retirees
     for retiree in retirees
@@ -775,6 +776,8 @@ finishGameRespond = (res) ->
     t2p2 = gamePlayers[3].trim().toLowerCase()
 
     oldStats = getStats()
+    oldRankings = getRankings(oldStats)
+    oldNumberOne = oldRankings[0]
 
     # The following is the format for game results
     resultDetails = {
@@ -863,6 +866,12 @@ finishGameRespond = (res) ->
         if matchWinner of accounts
             accounts[matchWinner] += matchWinAmount
             res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
+
+    if oldNumberOne.name in matchWinners
+        for matchLoser in losingTeamPlayers
+            if matchLoser of accounts
+                accounts[matchLoser] += matchLosersScore
+                res.send "@#{matchLoser} won #{matchLosersScore}ƒ¢ for scoring on the #1, #{oldNumberOne.name}!"
 
 
     saveAccounts()
