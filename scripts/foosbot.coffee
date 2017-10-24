@@ -86,30 +86,11 @@ _THE_RULES = [
     "If you get shut out, you have to crawl under the table"
     "Everyone shakes hands at the end of the game, no exceptions",
 ]
-_TIPS = [
-    "Keep your goalie in the center if you're not sure what to do",
-    "Take your time and control the ball for a better shot",
-    "Stagger your players when defending",
-    "Try not to shoot straight through the center",
-    "Keep your players the ball is behind them, so you don't block your partner's shot",
-    "Keep your defenders pointed inwards to make angle shots harder",
-    "To slapshot, place the bottom of your plam flat out, push forward, then pull up and grab",
-    "Close the gaps that lead to your net",
-    "Don't instinctively move your players back when the ball goes past them, you might score on yourself",
-    "Watch the ball, not the player, don't be fooled by dekes",
-    "Keep moving! Don't stop and pause just because your opponent did",
-    "Watch the hands and react to that, they're a tell before the actual move",
-    "Try to avoid patterns in your movement",
-    "Try to avoid crossing your goalie and your defenders, that leaves a gap through which to shoot",
-    "Guard the posts, but try not to linger there",
-    "Try to control the ball instead of shooting right away",
-    "Don't move for no reason if you're in a good position",
-    "Don't panic on slow shots! Concentrate and punish back",
-    "Keep an eye on your players more than on the ball when it's not in your half",
-    "Vary your shots, don't do the same thing from the same position over and over",
-    "Forget mistakes quickly and start thinking about the next play",
-    "Don't talk too much or you'll get distracted and make a mistake",
-]
+
+tipsFileName = "tips.txt"
+if !(fs.existsSync(tipsFileName))
+    fs.closeSync(fs.openSync(tipsFileName, 'w'))
+_TIPS = (fs.readFileSync tipsFileName, 'utf8').toString().split("\n").filter(Boolean)
 
 
 gamesFile = 'games.json'
