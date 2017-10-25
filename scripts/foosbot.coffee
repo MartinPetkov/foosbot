@@ -63,8 +63,6 @@ _DEFAULT_TOURNAMENT_SIZE = 16
 
 # Betting constants
 _STARTING_FOOSCOIN = 30.0
-_MATCH_WIN_AMOUNT = 5.0
-_HOUSE_PRIZE_BASE = 5.0
 
 
 # Rules and tips
@@ -805,12 +803,12 @@ finishGameRespond = (res) ->
     winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
     losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
     housePrizeProportion = winningTeamTrueskill / losingTeamTrueskill
-    housePrize = customRound(housePrizeProportion * _HOUSE_PRIZE_BASE, 2)
 
     if betWinners.length > 0
         for betWinner in betWinners
             if betWinner of accounts
                 # Award the house prize
+                housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
                 accounts[betWinner] += housePrize
                 res.send "@#{betWinner} won #{housePrize}ƒ¢ from the house!"
 
@@ -831,7 +829,7 @@ finishGameRespond = (res) ->
     matchWinAmount = Math.abs(t1score - t2score)
 
     # Give more if the trueskill difference is larger
-    matchWinAmount += housePrizeProportion * 2 * matchWinAmount
+    matchWinAmount += housePrizeProportion * matchWinAmount
 
     # Determine how much of the opposing prize pool to give, with the goals as a percentage
     if prizePool > 0
