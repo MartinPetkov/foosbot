@@ -849,8 +849,8 @@ finishGameRespond = (res) ->
     if oldNumberOne.name in matchWinners
         for matchLoser in losingTeamPlayers
             if matchLoser of accounts
-                accounts[matchLoser] += matchLosersScore
-                res.send "@#{matchLoser} won #{matchLosersScore}ƒ¢ for scoring on the #1, #{oldNumberOne.name}!"
+                accounts[matchLoser] += 1
+                res.send "@#{matchLoser} won 1ƒ¢ for scoring on the #1, #{oldNumberOne.name}!"
 
 
     saveAccounts()
