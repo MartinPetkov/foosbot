@@ -735,6 +735,16 @@ shuffleNextGameRespond = (res) ->
     shuffleGameRespond(res, 0)
 
 
+letsGoRespond = (res) ->
+    if games.length <= 0
+        res.send "No games are being played at the moment"
+        return
+
+    senderName = res.message.user.name
+    playersStr = games[0]['players'].filter((name) -> name != senderName).map((p) -> "@#{p}").join(' ')
+    res.send "#{playersStr} let's go"
+
+
 finishGameRespond = (res) ->
     if games.length <= 0
         res.send "No games are being played at the moment"
@@ -1728,6 +1738,7 @@ module.exports = (robot) ->
     robot.respond /shuffle game$/i, shuffleNextGameRespond
     robot.respond /rematch/i, rematchRespond
 
+    robot.hear /^(let's +)?go$/i, letsGoRespond
     robot.respond /finish game +(\d-\d)$/i, finishGameRespond
     robot.respond /(rankings|leaderboard)$/i, rankingsRespond
     robot.respond /(?:stats|rankings)(( \w+)+)$/i, rankingsForPlayersRespond
