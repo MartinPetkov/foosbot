@@ -62,6 +62,8 @@ schedule = require 'node-schedule'
 # Must be a power of 2
 _DEFAULT_TOURNAMENT_SIZE = 16
 
+_UNBALANCED_GAME_THRESHOLD = 10
+
 # Betting constants
 _STARTING_FOOSCOIN = 30.0
 
@@ -548,9 +550,21 @@ balancePlayers = (res, game) ->
     playersWithRanks.sort(rankSort)
 
     # Send warning if rank difference is too great
-    rankDifference = playersWithRanks[3]["rank"] - playersWithRanks[0]["rank"]
-    if rankDifference > 10
-        res.send "WARNING! Unbalanced game! Rank difference between best and worst player in the game is #{rankDifference}"
+    unbalanced = false
+    rankDifference = playersWithRanks[0]["rank"] - playersWithRanks[1]["rank"]
+    if rankDifference > _UNBALANCED_GAME_THRESHOLD
+        unbalancedPlayer1 = playersWithRanks[0]["name"]
+        unbalancedPlayer2 = playersWithRanks[1]["name"]
+        unbalanced = true
+
+    rankDifference = playersWithRanks[2]["rank"] - playersWithRanks[3]["rank"]
+    if rankDifference > _UNBALANCED_GAME_THRESHOLD
+        unbalancedPlayer1 = playersWithRanks[2]["name"]
+        unbalancedPlayer2 = playersWithRanks[3]["name"]
+        unbalanced = true
+
+    if unbalanced
+        res.send "WARNING! Unbalanced game! Rank difference between #{unbalancedPlayer1} and #{unbalancedPlayer2} in the game is #{rankDifference}"
 
     # Update the game
     game[0] = playersWithRanks[0]["name"]
