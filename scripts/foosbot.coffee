@@ -539,13 +539,18 @@ getRank = (playerName, rankings) ->
     return Infinity
 
 
-balancePlayers = (game) ->
+balancePlayers = (res, game) ->
     # Get the player rankings, which are sorted correctly
     rankings = getRankings()
 
     # Balance based on rank
     playersWithRanks = game.map (player) -> {"name": player, "rank": getRank(player, rankings)}
     playersWithRanks.sort(rankSort)
+
+    # Send warning if rank difference is too great
+    rankDifference = playersWithRanks[3]["rank"] - playersWithRanks[0]["rank"]
+    if rankDifference > 10
+        res.send "WARNING! Unbalanced game! Rank difference between best and worst player in the game is #{rankDifference}"
 
     # Update the game
     game[0] = playersWithRanks[0]["name"]
@@ -595,7 +600,7 @@ joinGameRespond = (res, n, playerName) ->
             gamePlayers[index] = newPlayer
             res.send "#{newPlayer} joined #{gameStr}!"
             if gamePlayers.indexOf('_') < 0
-                balancePlayers(gamePlayers)
+                balancePlayers(res, gamePlayers)
                 teamOneWinRate = getTeamStats(gamePlayers[0], gamePlayers[1])[gamePlayers[1]]["winPercentage"]
                 teamTwoWinRate = getTeamStats(gamePlayers[2], gamePlayers[3])[gamePlayers[3]]["winPercentage"]
 
@@ -708,7 +713,7 @@ balanceGameRespond = (res, n) ->
         res.send "Invalid game index #{n}"
         return
 
-    balancePlayers(games[n]['players'])
+    balancePlayers(res, games[n]['players'])
     saveGames()
     gamesRespond(res)
 
@@ -741,7 +746,7 @@ letsGoRespond = (res) ->
         return
 
     senderName = res.message.user.name
-    playersStr = games[0]['players'].filter((name) -> name != senderName).map((p) -> "@#{p}").join(' ')
+    playersStr = games[0]['players'].filter((name) -> name != senderName && name != '_').map((p) -> "@#{p}").join(' ')
     res.send "#{playersStr} let's go"
 
 
