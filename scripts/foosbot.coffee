@@ -50,6 +50,7 @@
 #   foosbot Bet <x.y> on game <n> team (0|1) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot All in on game <n> team (0|1) - Place a bet of all your money on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
+#   foosbot Buy meme - Spend your hard-earned ƒ¢ on a meme
 #   foosbot Tip - Get a helpful tip!
 #
 # Author:
@@ -67,6 +68,9 @@ _UNBALANCED_GAME_THRESHOLD = 10
 # Betting constants
 _STARTING_FOOSCOIN = 30.0
 _HOUSE_PRIZE = 10.0
+
+# Spending constants
+_COST_OF_MEME = 50.0
 
 
 # Rules and tips
@@ -1735,6 +1739,40 @@ tipOfTheDaySend = (robot) ->
         robot.send room: process.env.FOOSBALL_ROOM_ID, topd
 
 
+# Spending commands
+buyMemeRespond = (robot) ->
+    return (res) ->
+        buyer = res.message.user.name.trim().toLowerCase()
+
+        if !(buyer of accounts)
+            res.send "You have not bought in yet!"
+            return
+
+        balance = accounts[buyer]
+        if balance < _COST_OF_MEME
+            res.send "You do not have enough ƒ¢ to buy a meme! You need #{_COST_OF_MEME}ƒ¢, you have #{balance}ƒ¢"
+            return
+
+        accounts[buyer] -= _COST_OF_MEME
+        res.send "You bought a meme for #{_COST_OF_MEME}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
+
+        saveAccounts()
+
+        res.send 'Here is your meme'
+        robot.http('https://api.imgur.com/3/g/memes/time/')
+            .header('Accept', 'application/json')
+            .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
+            .get() (err, response, body) ->
+                memes = JSON.parse(body)['data']
+                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+                if randomMeme['is_album']
+                    memes = randomMeme['images']
+                    randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+
+                link = randomMeme['link']
+                res.send link
+
+
 module.exports = (robot) ->
     robot.respond /games/i, gamesRespond
 
@@ -1796,6 +1834,9 @@ module.exports = (robot) ->
     robot.respond /bet (\d+\.\d+) on game (\d+) team ([01])/i, betRespond
     robot.respond /all in on game (\d+) team ([01])/i, allInRespond
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
+
+    # Spending commands
+    robot.respond /buy meme/i, buyMemeRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
