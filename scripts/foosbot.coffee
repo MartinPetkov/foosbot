@@ -66,6 +66,7 @@ _UNBALANCED_GAME_THRESHOLD = 10
 
 # Betting constants
 _STARTING_FOOSCOIN = 30.0
+_HOUSE_PRIZE = 10.0
 
 
 # Rules and tips
@@ -838,7 +839,8 @@ finishGameRespond = (res) ->
         for betWinner in betWinners
             if betWinner of accounts
                 # Award the house prize
-                housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
+                #housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
+                housePrize = housePrizeProportion * _HOUSE_PRIZE
                 accounts[betWinner] += housePrize
                 res.send "@#{betWinner} won #{housePrize}ƒ¢ from the house!"
 
@@ -847,6 +849,9 @@ finishGameRespond = (res) ->
                     # Determine how much this winner should get, proportional to what they bet
                     proportion = customRound(game['bets'][betWinner]['amount'] / betWinnersTotalPool, 4)
                     betWinAmount = customRound(prizePool * proportion, 4)
+
+                    # Don't let people win more than they bet from the pool
+                    betWinAmount = Math.min(betWinAmount, game['bets'][betWinner]['amount'])
 
                     accounts[betWinner] += betWinAmount
                     res.send "@#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
