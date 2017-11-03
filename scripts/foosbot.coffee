@@ -1764,10 +1764,16 @@ buyMemeRespond = (robot) ->
             .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
             .get() (err, response, body) ->
                 memes = JSON.parse(body)['data']
-                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
-                if randomMeme['is_album']
-                    memes = randomMeme['images']
+
+                # Keep going until we find one that's SFW
+                while true
                     randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+                    if randomMeme['is_album']
+                        memes = randomMeme['images']
+                        randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+
+                    if process.env.NSFW_MEMES_ALLOWED == 'true' || !(randomMeme['nsfw'])
+                        break
 
                 link = randomMeme['link']
                 res.send link
