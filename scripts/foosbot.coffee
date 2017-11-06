@@ -854,9 +854,6 @@ finishGameRespond = (res) ->
                     proportion = customRound(game['bets'][betWinner]['amount'] / betWinnersTotalPool, 4)
                     betWinAmount = customRound(prizePool * proportion, 4)
 
-                    # Don't let people win more than they bet from the pool
-                    betWinAmount = Math.min(betWinAmount, game['bets'][betWinner]['amount'])
-
                     accounts[betWinner] += betWinAmount
                     res.send "@#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
 
