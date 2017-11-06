@@ -51,6 +51,7 @@
 #   foosbot All in on game <n> team (0|1) - Place a bet of all your money on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
 #   foosbot Buy meme [for <friend>] - Spend your hard-earned ƒ¢ on a meme, possibly for a friend
+#   foosbot Buy dad joke [for <friend>] - Spend your hard-earned ƒ¢ on a dad joke, possibly for a friend
 #   foosbot Tip - Get a helpful tip!
 #
 # Author:
@@ -70,7 +71,10 @@ _STARTING_FOOSCOIN = 30.0
 _HOUSE_PRIZE = 10.0
 
 # Spending constants
-_COST_OF_MEME = 50.0
+_COST_OF_GOODS = {
+    'meme': 50.0,
+    'dad joke': 20.0
+}
 
 
 # Rules and tips
@@ -1737,14 +1741,17 @@ tipOfTheDaySend = (robot) ->
 
 
 # Spending commands
-buyMemeRespond = (robot) ->
+buyRespond = (robot) ->
     return (res) ->
         buyer = res.message.user.name.trim().toLowerCase()
         recipient = buyer
 
+        # Determine the good being bought
+        good = res.match[1]
+
         # Could be bought for someone else
-        if !(isUndefined(res.match[1]))
-            recipient = res.match[1].trim().toLowerCase()
+        if !(isUndefined(res.match[2]))
+            recipient = res.match[2].trim().toLowerCase()
 
         recipient = recipient.replace('@', '')
 
@@ -1753,34 +1760,51 @@ buyMemeRespond = (robot) ->
             return
 
         balance = accounts[buyer]
-        if balance < _COST_OF_MEME
-            res.send "You do not have enough ƒ¢ to buy a meme! You need #{_COST_OF_MEME}ƒ¢, you have #{balance}ƒ¢"
+        cost = _COST_OF_GOODS[good]
+
+        if balance < cost
+            res.send "You do not have enough ƒ¢ to buy a #{good}! You need #{cost}ƒ¢, you have #{balance}ƒ¢"
             return
 
-        accounts[buyer] -= _COST_OF_MEME
-        res.send "You bought a meme for #{_COST_OF_MEME}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
+        accounts[buyer] -= cost
+        res.send "You bought a #{good} for #{cost}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
 
         saveAccounts()
 
-        res.send "Here is your meme, @#{recipient}"
-        robot.http('https://api.imgur.com/3/g/memes/time/')
-            .header('Accept', 'application/json')
-            .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
-            .get() (err, response, body) ->
-                memes = JSON.parse(body)['data']
+        res.send "Here is your #{good}, @#{recipient}..."
 
-                # Keep going until we find one that's SFW
-                while true
+        if good == 'meme'
+            buyMeme(robot, res)
+        else if good == 'dad joke'
+            buyDadJoke(robot, res)
+        else
+            res.send "Out of stock on #{good}s"
+
+buyMeme = (robot, res) ->
+    robot.http('https://api.imgur.com/3/g/memes/time/')
+        .header('Accept', 'application/json')
+        .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
+        .get() (err, response, body) ->
+            memes = JSON.parse(body)['data']
+
+            # Keep going until we find one that's SFW
+            while true
+                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+                if randomMeme['is_album']
+                    memes = randomMeme['images']
                     randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
-                    if randomMeme['is_album']
-                        memes = randomMeme['images']
-                        randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
 
-                    if process.env.NSFW_MEMES_ALLOWED == 'true' || !(randomMeme['nsfw'])
-                        break
+                if process.env.NSFW_MEMES_ALLOWED == 'true' || !(randomMeme['nsfw'])
+                    break
 
-                link = randomMeme['link']
-                res.send link
+            link = randomMeme['link']
+            res.send link
+
+buyDadJoke = (robot, res) ->
+    robot.http('https://icanhazdadjoke.com/')
+        .header('Accept', 'text/plain')
+        .get() (err, response, body) ->
+            res.send body
 
 
 module.exports = (robot) ->
@@ -1846,8 +1870,8 @@ module.exports = (robot) ->
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     # Spending commands
-    robot.respond /buy meme$/i, buyMemeRespond(robot)
-    robot.respond /buy meme for @?(\w+)/i, buyMemeRespond(robot)
+    robot.respond /buy (meme|dad joke)$/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
