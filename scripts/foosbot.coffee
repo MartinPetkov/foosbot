@@ -50,7 +50,7 @@
 #   foosbot Bet <x.y> on game <n> team (0|1) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot All in on game <n> team (0|1) - Place a bet of all your money on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
-#   foosbot Buy meme - Spend your hard-earned ƒ¢ on a meme
+#   foosbot Buy meme [for <friend>] - Spend your hard-earned ƒ¢ on a meme, possibly for a friend
 #   foosbot Tip - Get a helpful tip!
 #
 # Author:
@@ -1087,7 +1087,7 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
 
     pronoun = "#{playerName}'s"
     together = ""
-    if !isUndefined(otherPlayerName)
+    if !(isUndefined(otherPlayerName))
         pronoun = "#{playerName} and #{otherPlayerName}'s"
         together = if rivals then " against each other" else " together"
 
@@ -1740,6 +1740,13 @@ tipOfTheDaySend = (robot) ->
 buyMemeRespond = (robot) ->
     return (res) ->
         buyer = res.message.user.name.trim().toLowerCase()
+        recipient = buyer
+
+        # Could be bought for someone else
+        if !(isUndefined(res.match[1]))
+            recipient = res.match[1].trim().toLowerCase()
+
+        recipient = recipient.replace('@', '')
 
         if !(buyer of accounts)
             res.send "You have not bought in yet!"
@@ -1755,7 +1762,7 @@ buyMemeRespond = (robot) ->
 
         saveAccounts()
 
-        res.send 'Here is your meme'
+        res.send "Here is your meme, @#{recipient}"
         robot.http('https://api.imgur.com/3/g/memes/time/')
             .header('Accept', 'application/json')
             .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
@@ -1839,7 +1846,8 @@ module.exports = (robot) ->
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     # Spending commands
-    robot.respond /buy meme/i, buyMemeRespond(robot)
+    robot.respond /buy meme$/i, buyMemeRespond(robot)
+    robot.respond /buy meme for @?(\w+)/i, buyMemeRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
