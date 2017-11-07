@@ -867,7 +867,8 @@ finishGameRespond = (res) ->
     matchWinnersScore = if t1score > t2score then t1score else t2score
     matchLosersScore = if t1score > t2score then t2score else t1score
 
-    matchWinAmount = 2 * (10 - Math.abs(t1score - t2score))
+    goalDifference = Math.abs(t1score - t2score)
+    matchWinAmount = if goalDifference == 1 then 20 else 1 + (2 * (9 - goalDifference))
 
     # Give more if the trueskill difference is larger
     matchWinAmount += housePrizeProportion * matchWinAmount
