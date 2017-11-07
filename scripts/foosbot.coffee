@@ -561,13 +561,13 @@ balancePlayers = (res, game) ->
 
     # Send warning if rank difference is too great
     unbalanced = false
-    rankDifference = playersWithRanks[0]["rank"] - playersWithRanks[1]["rank"]
+    rankDifference = Math.abs(playersWithRanks[0]["rank"] - playersWithRanks[1]["rank"])
     if rankDifference > _UNBALANCED_GAME_THRESHOLD
         unbalancedPlayer1 = playersWithRanks[0]["name"]
         unbalancedPlayer2 = playersWithRanks[1]["name"]
         unbalanced = true
 
-    rankDifference = playersWithRanks[2]["rank"] - playersWithRanks[3]["rank"]
+    rankDifference = Math.abs(playersWithRanks[2]["rank"] - playersWithRanks[3]["rank"])
     if rankDifference > _UNBALANCED_GAME_THRESHOLD
         unbalancedPlayer1 = playersWithRanks[2]["name"]
         unbalancedPlayer2 = playersWithRanks[3]["name"]
