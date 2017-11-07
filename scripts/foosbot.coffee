@@ -50,9 +50,10 @@
 #   foosbot Bet <x.y> on game <n> team (0|1) - Place a bet of <x.y>ƒ¢ (i.e. 5.2) on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot All in on game <n> team (0|1) - Place a bet of all your money on game <n> for team 0 or 1 (placing again replaces your previous bet)
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
+#   foosbot Tip - Get a helpful tip!
+#   foosbot Store - See what you can buy with your hard-earned ƒ¢
 #   foosbot Buy meme [for <friend>] - Spend your hard-earned ƒ¢ on a meme, possibly for a friend
 #   foosbot Buy dad joke [for <friend>] - Spend your hard-earned ƒ¢ on a dad joke, possibly for a friend
-#   foosbot Tip - Get a helpful tip!
 #
 # Author:
 #   MartinPetkov
@@ -1741,6 +1742,13 @@ tipOfTheDaySend = (robot) ->
 
 
 # Spending commands
+storeRespond = (res) ->
+    response = 'Store:\n'
+    for good in Object.keys(_COST_OF_GOODS)
+        response += "#{good}: #{_COST_OF_GOODS[good]}ƒ¢\n"
+
+    res.send response
+
 buyRespond = (robot) ->
     return (res) ->
         buyer = res.message.user.name.trim().toLowerCase()
@@ -1870,6 +1878,7 @@ module.exports = (robot) ->
     robot.respond /cancel bet on game (\d+)/i, cancelBetRespond
 
     # Spending commands
+    robot.respond /store/i, storeRespond
     robot.respond /buy (meme|dad joke)$/i, buyRespond(robot)
     robot.respond /buy (meme|dad joke) for @?(\w+)/i, buyRespond(robot)
 
