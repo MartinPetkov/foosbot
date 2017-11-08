@@ -789,6 +789,10 @@ finishGameRespond = (res) ->
     t1score = parseInt(result[0], 10)
     t2score = parseInt(result[1], 10)
 
+    if t1score == t2score
+        res.send "You cannot finish the game in a tie, someone must win!"
+        return
+
     t1p1 = gamePlayers[0].trim().toLowerCase()
     t1p2 = gamePlayers[1].trim().toLowerCase()
     t2p1 = gamePlayers[2].trim().toLowerCase()
