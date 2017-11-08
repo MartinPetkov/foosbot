@@ -1880,8 +1880,8 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (meme|dad joke)$/i, buyRespond(robot)
-    robot.respond /buy (meme|dad joke) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (dad joke)$/i, buyRespond(robot)
+    robot.respond /buy (dad joke) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
