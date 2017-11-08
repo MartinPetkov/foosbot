@@ -1789,24 +1789,23 @@ buyRespond = (robot) ->
         else
             res.send "Out of stock on #{good}s"
 
+
 buyMeme = (robot, res) ->
-    robot.http('https://api.imgur.com/3/g/memes/time/')
+    robot.http('https://www.reddit.com/r/wholesomememes/top/.json')
         .header('Accept', 'application/json')
-        .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
+        # .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
         .get() (err, response, body) ->
             memes = JSON.parse(body)['data']
+            memes = memes['children']
 
-            # Keep going until we find one that's SFW
+            # Keep going until we find a post that's an image
             while true
-                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
-                if randomMeme['is_album']
-                    memes = randomMeme['images']
-                    randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]
+                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]['data']
+                link = randomMeme['url']
 
-                if process.env.NSFW_MEMES_ALLOWED == 'true' || !(randomMeme['nsfw'])
+                if /(jpg|png|gif)$/.test(link)
                     break
 
-            link = randomMeme['link']
             res.send link
 
 buyDadJoke = (robot, res) ->
@@ -1880,8 +1879,8 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (dad joke)$/i, buyRespond(robot)
-    robot.respond /buy (dad joke) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke)$/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
