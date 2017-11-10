@@ -1775,22 +1775,22 @@ buyRespond = (robot) ->
             res.send "You do not have enough ƒ¢ to buy a #{good}! You need #{cost}ƒ¢, you have #{balance}ƒ¢"
             return
 
+        if good == 'meme'
+            buyMeme(robot, res)
+        else if good == 'dad joke'
+            buyDadJoke(robot, res)
+        else if good == 'xkcd'
+            buyxkcd(robot, res)
+        else
+            res.send "Out of stock on #{good}s"
+            return
+
         accounts[buyer] -= cost
         res.send "You bought a #{good} for #{cost}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
 
         saveAccounts()
 
         res.send "Here is your #{good}, @#{recipient}..."
-
-        if good == 'meme'
-            buyMeme(robot, res)
-        else if good == 'dad joke'
-            buyDadJoke(robot, res)
-        else if good == 'xkcd'
-            buyxkcdComic(robot, res)
-        else
-            res.send "Out of stock on #{good}s"
-
 
 buyMeme = (robot, res) ->
     robot.http('https://www.reddit.com/r/wholesomememes/top/.json')
@@ -1815,7 +1815,7 @@ buyDadJoke = (robot, res) ->
         .get() (err, response, body) ->
             res.send body
 
-buyxkcdComic = (robot, res) ->
+buyxkcd = (robot, res) ->
     # Get the latest comic so we know how many there are total
     robot.http('https://xkcd.com/info.0.json')
         .header('Accept', 'application/json')
@@ -1827,7 +1827,9 @@ buyxkcdComic = (robot, res) ->
             robot.http("https://xkcd.com/#{randomComicNumber}/info.0.json")
                 .header('Accept', 'application/json')
                 .get() (err, response, body) ->
-                    res.send JSON.parse(body)['img']
+                    comic = JSON.parse(body)
+                    res.send comic['img']
+                    res.send "\"#{comic['alt']}\""
 
 
 module.exports = (robot) ->
