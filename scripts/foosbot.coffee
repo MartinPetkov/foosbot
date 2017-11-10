@@ -52,8 +52,7 @@
 #   foosbot Cancel bet on game <n> - Withdraw your bet for game <n>
 #   foosbot Tip - Get a helpful tip!
 #   foosbot Store - See what you can buy with your hard-earned ƒ¢
-#   foosbot Buy meme [for <friend>] - Spend your hard-earned ƒ¢ on a meme, possibly for a friend
-#   foosbot Buy dad joke [for <friend>] - Spend your hard-earned ƒ¢ on a dad joke, possibly for a friend
+#   foosbot Buy <good> [for <friend>] - Spend your hard-earned ƒ¢ on a good, possibly for a friend
 #
 # Author:
 #   MartinPetkov
@@ -74,7 +73,8 @@ _HOUSE_PRIZE = 10.0
 # Spending constants
 _COST_OF_GOODS = {
     'meme': 50.0,
-    'dad joke': 20.0
+    'dad joke': 10.0,
+    'xkcd': 30.0
 }
 
 
@@ -788,10 +788,6 @@ finishGameRespond = (res) ->
     result = res.match[1].trim().split('-')
     t1score = parseInt(result[0], 10)
     t2score = parseInt(result[1], 10)
-
-    if t1score == t2score
-        res.send "You cannot finish the game in a tie, someone must win!"
-        return
 
     t1p1 = gamePlayers[0].trim().toLowerCase()
     t1p2 = gamePlayers[1].trim().toLowerCase()
@@ -1790,6 +1786,8 @@ buyRespond = (robot) ->
             buyMeme(robot, res)
         else if good == 'dad joke'
             buyDadJoke(robot, res)
+        else if good == 'xkcd'
+            buyxkcdComic(robot, res)
         else
             res.send "Out of stock on #{good}s"
 
@@ -1797,7 +1795,6 @@ buyRespond = (robot) ->
 buyMeme = (robot, res) ->
     robot.http('https://www.reddit.com/r/wholesomememes/top/.json')
         .header('Accept', 'application/json')
-        # .header('Authorization', "Client-ID #{process.env.MEME_API_CLIENT_ID}")
         .get() (err, response, body) ->
             memes = JSON.parse(body)['data']
             memes = memes['children']
@@ -1817,6 +1814,20 @@ buyDadJoke = (robot, res) ->
         .header('Accept', 'text/plain')
         .get() (err, response, body) ->
             res.send body
+
+buyxkcdComic = (robot, res) ->
+    # Get the latest comic so we know how many there are total
+    robot.http('https://xkcd.com/info.0.json')
+        .header('Accept', 'application/json')
+        .get() (err, response, body) ->
+            latest = parseInt(JSON.parse(body)['num'], 10)
+            randomComicNumber = Math.round(Math.random() * latest) + 1
+
+            # Get the actual comic
+            robot.http("https://xkcd.com/#{randomComicNumber}/info.0.json")
+                .header('Accept', 'application/json')
+                .get() (err, response, body) ->
+                    res.send JSON.parse(body)['img']
 
 
 module.exports = (robot) ->
@@ -1883,8 +1894,8 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (meme|dad joke)$/i, buyRespond(robot)
-    robot.respond /buy (meme|dad joke) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke|xkcd)$/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke|xkcd) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
