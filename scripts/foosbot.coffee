@@ -75,7 +75,10 @@ _COST_OF_GOODS = {
     'meme': 20.0,
     'dad joke': 10.0,
     'xkcd': 30.0,
-    'adviceanimal': 40.0
+    'adviceanimal': 20.0,
+    'aww': 20.0,
+    'funny': 20.0,
+    'reddit': 1000.0,
 }
 
 
@@ -1777,13 +1780,19 @@ buyRespond = (robot) ->
             return
 
         if good == 'meme'
-            buyMeme(robot, res)
+            buyFromReddit(robot, res, 'dankmemes')
         else if good == 'dad joke'
             buyDadJoke(robot, res)
         else if good == 'xkcd'
             buyxkcd(robot, res)
         else if good == 'adviceanimal'
-            buyAdviceAnimal(robot, res)
+            buyFromReddit(robot, res, 'AdviceAnimals')
+        else if good == 'aww'
+            buyFromReddit(robot, res, 'aww')
+        else if good == 'funny'
+            buyFromReddit(robot, res, 'funny')
+        else if good == 'reddit'
+            buyFromReddit(robot, res, res.match[2])
         else
             res.send "Out of stock on #{good}s"
             return
@@ -1795,11 +1804,6 @@ buyRespond = (robot) ->
 
         res.send "Here is your #{good}, @#{recipient}..."
 
-buyMeme = (robot, res) ->
-    buyFromReddit(robot, res, 'wholesomememes')
-
-buyAdviceAnimal = (robot, res) ->
-    buyFromReddit(robot, res, 'AdviceAnimals')
 
 buyFromReddit = (robot, res, subreddit) ->
     robot.http("https://www.reddit.com/r/#{subreddit}/top/.json")
@@ -1905,8 +1909,9 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (meme|dad joke|xkcd|adviceanimal)$/i, buyRespond(robot)
-    robot.respond /buy (meme|dad joke|xkcd|adviceanimal) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke|xkcd|adviceanimal|aww|funny)$/i, buyRespond(robot)
+    robot.respond /buy (reddit) (\w+)$/i, buyRespond(robot)
+    robot.respond /buy (meme|dad joke|xkcd|adviceanimal|aww|funny) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
