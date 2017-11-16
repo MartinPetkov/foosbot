@@ -73,6 +73,7 @@ _HOUSE_PRIZE = 10.0
 # Spending constants
 _COST_OF_GOODS = {
     'meme': 20.0,
+    'time meme': 30.0,
     'dad joke': 10.0,
     'xkcd': 30.0,
     'adviceanimal': 20.0,
@@ -1781,6 +1782,8 @@ buyRespond = (robot) ->
 
         if good == 'meme'
             buyFromReddit(robot, res, 'dankmemes')
+        if good == 'time meme'
+            buyFromReddit(robot, res, 'trippinthroughtime')
         else if good == 'dad joke'
             buyDadJoke(robot, res)
         else if good == 'xkcd'
@@ -1909,9 +1912,9 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (meme|dad joke|xkcd|adviceanimal|aww|funny)$/i, buyRespond(robot)
+    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny)$/i, buyRespond(robot)
     robot.respond /buy (reddit) (\w+)$/i, buyRespond(robot)
-    robot.respond /buy (meme|dad joke|xkcd|adviceanimal|aww|funny) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
