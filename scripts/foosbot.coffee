@@ -1782,7 +1782,7 @@ buyRespond = (robot) ->
 
         if good == 'meme'
             buyFromReddit(robot, res, 'dankmemes')
-        if good == 'time meme'
+        else if good == 'time meme'
             buyFromReddit(robot, res, 'trippinthroughtime')
         else if good == 'dad joke'
             buyDadJoke(robot, res)
