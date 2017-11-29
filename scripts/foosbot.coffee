@@ -555,6 +555,8 @@ getRank = (playerName, rankings) ->
     # If the player is new, they should be considered worse than anyone
     return Infinity
 
+sendUnbalancedGameMsg = (res, p1, p2, rankDiff) ->
+    res.send "WARNING! Unbalanced game! Rank difference between #{p1} and #{p2} in the game is #{rankDiff} (>#{_UNBALANCED_GAME_THRESHOLD})"
 
 balancePlayers = (res, game) ->
     # Get the player rankings, which are sorted correctly
@@ -565,21 +567,17 @@ balancePlayers = (res, game) ->
     playersWithRanks.sort(rankSort)
 
     # Send warning if rank difference is too great
-    unbalanced = false
     rankDifference = Math.abs(playersWithRanks[0]["rank"] - playersWithRanks[1]["rank"])
     if rankDifference > _UNBALANCED_GAME_THRESHOLD
         unbalancedPlayer1 = playersWithRanks[0]["name"]
         unbalancedPlayer2 = playersWithRanks[1]["name"]
-        unbalanced = true
+        sendUnbalancedGameMsg(res, unbalancedPlayer1, unbalancedPlayer2, rankDifference)
 
     rankDifference = Math.abs(playersWithRanks[2]["rank"] - playersWithRanks[3]["rank"])
     if rankDifference > _UNBALANCED_GAME_THRESHOLD
         unbalancedPlayer1 = playersWithRanks[2]["name"]
         unbalancedPlayer2 = playersWithRanks[3]["name"]
-        unbalanced = true
-
-    if unbalanced
-        res.send "WARNING! Unbalanced game! Rank difference between #{unbalancedPlayer1} and #{unbalancedPlayer2} in the game is #{rankDifference}"
+        sendUnbalancedGameMsg(res, unbalancedPlayer1, unbalancedPlayer2, rankDifference)
 
     # Update the game
     game[0] = playersWithRanks[0]["name"]
