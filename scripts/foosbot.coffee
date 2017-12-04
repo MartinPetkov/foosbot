@@ -79,6 +79,7 @@ _COST_OF_GOODS = {
     'adviceanimal': 20.0,
     'aww': 20.0,
     'funny': 20.0,
+    'whoa': 30.0,
     'reddit': 1000.0,
 }
 
@@ -1792,6 +1793,8 @@ buyRespond = (robot) ->
             buyFromReddit(robot, res, 'aww')
         else if good == 'funny'
             buyFromReddit(robot, res, 'funny')
+        else if good == 'whoa'
+            buyFromReddit(robot, res, 'woahdude')
         else if good == 'reddit'
             buyFromReddit(robot, res, res.match[2])
         else
@@ -1807,7 +1810,7 @@ buyRespond = (robot) ->
 
 
 buyFromReddit = (robot, res, subreddit) ->
-    robot.http("https://www.reddit.com/r/#{subreddit}/top/.json")
+    robot.http("https://www.reddit.com/r/#{subreddit}/top.json?count=100")
         .header('Accept', 'application/json')
         .get() (err, response, body) ->
             memes = JSON.parse(body)['data']
@@ -1815,7 +1818,8 @@ buyFromReddit = (robot, res, subreddit) ->
 
             # Keep going until we find a post that's an image
             while true
-                randomMeme = memes[Math.round(Math.random() * (memes.length - 1))]['data']
+                memeIndex = Math.round(Math.random() * (memes.length - 1))
+                randomMeme = memes[memeIndex]['data']
                 link = randomMeme['url']
 
                 if /(jpg|png|gif)$/.test(link)
@@ -1910,9 +1914,9 @@ module.exports = (robot) ->
 
     # Spending commands
     robot.respond /store/i, storeRespond
-    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny)$/i, buyRespond(robot)
+    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny|whoa)$/i, buyRespond(robot)
     robot.respond /buy (reddit) (\w+)$/i, buyRespond(robot)
-    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny) for @?(\w+)/i, buyRespond(robot)
+    robot.respond /buy (meme|time meme|dad joke|xkcd|adviceanimal|aww|funny|whoa) for @?(\w+)/i, buyRespond(robot)
 
     # Helpful stuff
     robot.respond /the rules/i, theRulesRespond
