@@ -9,6 +9,7 @@
 #   foosbot Find people|players - Ask for people to play in the next game
 #   foosbot I'm in | Join game - Claim a spot in the next game
 #   foosbot Add <player_name> - Add a player that may or may not be on LCB to the next game
+#   foosbot Call <player_name> - Call a player to join the next game
 #   foosbot Kick <player_name> - Kick a player from the next game
 #   foosbot Abandon game - Free up your spot in the next game
 #   foosbot Cancel game - Cancel the next game
@@ -17,6 +18,7 @@
 #   foosbot Find people|players for game <n> - Ask for people to play in the nth game
 #   foosbot Join game <n> - Claim a spot in the nth game
 #   foosbot Add <player_name> to game <n> - Add a player that may or may not be on LCB to the nth game
+#   foosbot Call <player_name> to game <n> - Call a player to join the nth game
 #   foosbot Kick <player_name> from game <n> - Kick a player from the nth game
 #   foosbot Abandon game <n> - Free up your spot in the nth game
 #   foosbot Cancel game <n> - Cancel the nth game
@@ -608,7 +610,6 @@ joinGameRespond = (res, n, playerName) ->
         return
 
     n = if isUndefined(n) then parseInt(res.match[1].trim(), 10) else n
-    any = if !any then false else true
     if isInvalidIndex(n)
         res.send "Invalid game index #{n}"
         return
@@ -721,6 +722,35 @@ addToNextGameRespond = (res) ->
     # Add yourself to the next game
     # Cannot join if full
     addToGameRespond(res, 0)
+
+
+callToGameRespond = (res, n) ->
+    # Add a player to the nth game
+    playerName = res.match[1].trim()
+    n = if isUndefined(n) then parseInt(res.match[2].trim(), 10) else n
+
+    if isInvalidIndex(n)
+        res.send "Invalid game index #{n}"
+        return
+
+    gamePlayers = (player for player in games[n]['players'] when player != "_")
+
+    if gamePlayers.length >= 4
+        res.send "Game is full!"
+        return
+
+    gamePlayers = gamePlayers.join(', ')
+    if gamePlayers.length <= 0
+        gamePlayers = 'yourself'
+
+    gameStr = if n == 0 then "the next game" else "game #{n}"
+
+    res.send "@#{playerName} come play with #{gamePlayers} in #{gameStr}!"
+
+callToNextGameRespond = (res) ->
+    # Add yourself to the next game
+    # Cannot join if full
+    callToGameRespond(res, 0)
 
 
 kickFromGameRespond = (res, n) ->
@@ -1858,6 +1888,7 @@ module.exports = (robot) ->
     robot.respond /find (?:people|players) for game (\d+)/i, findPeopleForGameRespond
     robot.respond /join game (\d+)/i, joinGameRespond
     robot.respond /add (\w+) to game (\d+)/i, addToGameRespond
+    robot.respond /call (\w+) to game (\d+)/i, callToGameRespond
     robot.respond /kick (\w+) from game (\d+)/i, kickFromGameRespond
     robot.respond /abandon game (\d+)/i, abandonGameRespond
     robot.respond /cancel game (\d+)/i, cancelGameRespond
@@ -1870,6 +1901,7 @@ module.exports = (robot) ->
     robot.respond /i'm in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
     robot.respond /add (\w+)$/i, addToNextGameRespond
+    robot.respond /call (\w+)$/i, callToNextGameRespond
     robot.respond /kick (\w+)$/i, kickFromNextGameRespond
     robot.respond /abandon game$/i, abandonNextGameRespond
     robot.respond /cancel game$/i, cancelNextGameRespond
