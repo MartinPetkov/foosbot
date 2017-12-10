@@ -517,8 +517,8 @@ resetPreviousRankings = (res) ->
     savePreviousRanks()
 
 
-showChangedRankings = (res, p1, p2, p3, p4) ->
-    rankChanges = "Rank changes:\n"
+getChangedRankings = (res, p1, p2, p3, p4) ->
+    rankChanges = "\nRank changes:\n"
 
     rankings = getRankings()
 
@@ -536,7 +536,7 @@ showChangedRankings = (res, p1, p2, p3, p4) ->
 
     resetPreviousRankings(res)
 
-    res.send rankChanges
+    return rankChanges
 
 
 rankSort = (p1,p2) ->
@@ -857,6 +857,8 @@ finishGameRespond = (res) ->
     # Record the scores and save them
     finishedGames.push resultDetails
 
+    finishedGamesMsg = ["Results saved\n"]
+
     # Return the bets to the bet winners
     winningTeam = if t1score > t2score then 0 else 1
     betWinners = []
@@ -885,7 +887,7 @@ finishGameRespond = (res) ->
                 #housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
                 housePrize = housePrizeProportion * _HOUSE_PRIZE
                 accounts[betWinner] += housePrize
-                res.send "@#{betWinner} won #{housePrize}ƒ¢ from the house!"
+                finishedGamesMsg.push("@#{betWinner} won #{housePrize}ƒ¢ from the house!")
 
                 # Distribute the prize pool from the losers
                 if prizePool > 0
@@ -894,7 +896,7 @@ finishGameRespond = (res) ->
                     betWinAmount = customRound(prizePool * proportion, 4)
 
                     accounts[betWinner] += betWinAmount
-                    res.send "@#{betWinner} won #{betWinAmount}ƒ¢ from betting!"
+                    finishedGamesMsg.push("@#{betWinner} won #{betWinAmount}ƒ¢ from betting!")
 
     # Award a prize to the winners of the match, equal to the number of goals scored
     matchWinners = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
@@ -911,35 +913,38 @@ finishGameRespond = (res) ->
     if prizePool > 0
         matchWinAmount += prizePool * (matchWinnersScore / 100.0)
 
-    # Double the win amount in case of a shutout
-    if matchLosersScore == 0
-        matchWinAmount = matchWinAmount * 2
-        res.send "Double fooscoins for a shutout win!"
-        res.send "https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif"
-
-    for matchWinner in matchWinners
-        if matchWinner of accounts
-            accounts[matchWinner] += matchWinAmount
-            res.send "@#{matchWinner} won #{matchWinAmount}ƒ¢!"
-
+    # Add pity prize for scoring on the #1
     if oldNumberOne.name in matchWinners
         for matchLoser in losingTeamPlayers
             if matchLoser of accounts
                 accounts[matchLoser] += 1
-                res.send "@#{matchLoser} won 1ƒ¢ for scoring on the #1, #{oldNumberOne.name}!"
+                finishedGamesMsg.push("@#{matchLoser} won 1ƒ¢ for scoring on the #1, #{oldNumberOne.name}!")
+
+    # Double the win amount in case of a shutout
+    if matchLosersScore == 0
+        matchWinAmount = matchWinAmount * 2
+
+    for matchWinner in matchWinners
+        if matchWinner of accounts
+            accounts[matchWinner] += matchWinAmount
+            finishedGamesMsg.push("@#{matchWinner} won #{matchWinAmount}ƒ¢!")
+
+    if matchLosersScore == 0
+        finishedGamesMsg.push("Double fooscoins for a shutout win!")
+        finishedGamesMsg.push("https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif")
 
 
     saveAccounts()
     saveFinishedGames()
 
     # Show changed rankings since last time
-    showChangedRankings(res, t1p1, t1p2, t2p1, t2p2)
+    finishedGamesMsg.push(getChangedRankings(res, t1p1, t1p2, t2p1, t2p2))
 
     # Remove the game from the list
     games.splice(0,1)
     saveGames()
 
-    res.send "Results saved"
+    res.send finishedGamesMsg.join('\n')
 
 theRulesRespond = (res) ->
     res.send _THE_RULES.map((rule, i) -> "#{i+1}. #{rule}").join('\n')
