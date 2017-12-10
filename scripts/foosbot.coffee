@@ -905,7 +905,7 @@ finishGameRespond = (res) ->
     matchLosersScore = if t1score > t2score then t2score else t1score
 
     goalDifference = Math.abs(t1score - t2score)
-    matchWinAmount = if goalDifference == 1 then 20 else 1 + (2 * (9 - goalDifference))
+    matchWinAmount = if goalDifference == 1 or matchLosersScore == 0 then 20 else 1 + (2 * (9 - goalDifference))
 
     # Give more if the trueskill difference is larger
     matchWinAmount += housePrizeProportion * matchWinAmount
@@ -924,15 +924,12 @@ finishGameRespond = (res) ->
     # Double the win amount in case of a shutout
     if matchLosersScore == 0
         matchWinAmount = matchWinAmount * 2
+        finishedGamesMsg.push("Double fooscoins for a shutout win!")
 
     for matchWinner in matchWinners
         if matchWinner of accounts
             accounts[matchWinner] += matchWinAmount
             finishedGamesMsg.push("@#{matchWinner} won #{matchWinAmount}ƒ¢!")
-
-    if matchLosersScore == 0
-        finishedGamesMsg.push("Double fooscoins for a shutout win!")
-        finishedGamesMsg.push("https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif")
 
 
     saveAccounts()
@@ -946,6 +943,9 @@ finishGameRespond = (res) ->
     saveGames()
 
     res.send finishedGamesMsg.join('\n')
+
+    if matchLosersScore == 0
+        res.send "https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif"
 
 theRulesRespond = (res) ->
     res.send _THE_RULES.map((rule, i) -> "#{i+1}. #{rule}").join('\n')
