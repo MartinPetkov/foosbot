@@ -878,14 +878,15 @@ finishGameRespond = (res) ->
     losingTeamPlayers = if t1score > t2score then [t2p1,t2p2] else [t1p1,t1p2]
     winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
     losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
-    housePrizeProportion = winningTeamTrueskill / losingTeamTrueskill
+    housePrizeProportion = 1.5 * (winningTeamTrueskill / losingTeamTrueskill)
 
     if betWinners.length > 0
         for betWinner in betWinners
             if betWinner of accounts
                 # Award the house prize
-                #housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
-                housePrize = housePrizeProportion * _HOUSE_PRIZE
+                # housePrize = housePrizeProportion * game['bets'][betWinner]['amount']
+                # housePrize = housePrizeProportion * _HOUSE_PRIZE
+                housePrize = housePrizeProportion * Math.max(_HOUSE_PRIZE, 5 * Math.sqrt(game['bets'][betWinner]['amount']))
                 accounts[betWinner] += housePrize
                 finishedGamesMsg.push("@#{betWinner} won #{housePrize}ƒ¢ from the house!")
 
