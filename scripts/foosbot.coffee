@@ -733,17 +733,21 @@ callToGameRespond = (res, n) ->
         res.send "Invalid game index #{n}"
         return
 
+    gameStr = if n == 0 then "the next game" else "game #{n}"
+
     gamePlayers = (player for player in games[n]['players'] when player != "_")
 
     if gamePlayers.length >= 4
         res.send "Game is full!"
         return
 
+    if playerName in gamePlayers
+        res.send "#{playerName} is already part of #{gameStr}!"
+        return
+
     gamePlayers = gamePlayers.join(', ')
     if gamePlayers.length <= 0
         gamePlayers = 'yourself'
-
-    gameStr = if n == 0 then "the next game" else "game #{n}"
 
     res.send "@#{playerName} come play with #{gamePlayers} in #{gameStr}!"
 
