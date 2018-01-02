@@ -919,11 +919,12 @@ finishGameRespond = (res) ->
         matchWinAmount += prizePool * (matchWinnersScore / 100.0)
 
     # Add pity prize for scoring on the #1
-    if oldNumberOne.name in matchWinners
-        for matchLoser in losingTeamPlayers
-            if matchLoser of accounts
-                accounts[matchLoser] += 1
-                finishedGamesMsg.push("@#{matchLoser} won 1ƒ¢ for scoring on the #1, #{oldNumberOne.name}!")
+    if !(isUndefined(oldNumberOne))
+        if oldNumberOne.name in matchWinners
+            for matchLoser in losingTeamPlayers
+                if matchLoser of accounts
+                    accounts[matchLoser] += 1
+                    finishedGamesMsg.push("@#{matchLoser} won 1ƒ¢ for scoring on the #1, #{oldNumberOne.name}!")
 
     # Double the win amount in case of a shutout
     if matchLosersScore == 0
