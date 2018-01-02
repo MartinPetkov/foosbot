@@ -885,7 +885,8 @@ finishGameRespond = (res) ->
     if (t1p1 of oldStats) && (t1p2 of oldStats) && (t2p1 of oldStats) && (t2p2 of oldStats)
         winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
         losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
-        housePrizeProportion = housePrizeProportion * (winningTeamTrueskill / losingTeamTrueskill)
+        if (winningTeamTrueskill > 0) && (losingTeamTrueskill > 0)
+            housePrizeProportion = housePrizeProportion * (winningTeamTrueskill / losingTeamTrueskill)
 
     if betWinners.length > 0
         for betWinner in betWinners
