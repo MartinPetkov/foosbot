@@ -880,9 +880,12 @@ finishGameRespond = (res) ->
     # Give extra money from the house, based on trueskill
     winningTeamPlayers = if t1score > t2score then [t1p1,t1p2] else [t2p1,t2p2]
     losingTeamPlayers = if t1score > t2score then [t2p1,t2p2] else [t1p1,t1p2]
-    winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
-    losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
-    housePrizeProportion = 1.5 * (winningTeamTrueskill / losingTeamTrueskill)
+    housePrizeProportion = 1.5
+
+    if (t1p1 of oldStats) && (t1p2 of oldStats) && (t2p1 of oldStats) && (t2p2 of oldStats)
+        winningTeamTrueskill = oldStats[losingTeamPlayers[0]]['trueskill'] + oldStats[losingTeamPlayers[1]]['trueskill']
+        losingTeamTrueskill = oldStats[winningTeamPlayers[0]]['trueskill'] + oldStats[winningTeamPlayers[1]]['trueskill']
+        housePrizeProportion = housePrizeProportion * (winningTeamTrueskill / losingTeamTrueskill)
 
     if betWinners.length > 0
         for betWinner in betWinners
