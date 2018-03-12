@@ -486,7 +486,7 @@ rankingsRespond = (res, specificPlayers, topNPlayers) ->
         rankings = rankings.slice(0, topNPlayers)
 
     # Construct the rankings string
-    responseList = new Array(rankings.length + 2).fill('') # Initialize with empty lines, to add to later
+    responseList = new Array(rankings.length + 4).fill('') # Initialize with empty lines, to add to later
     # addColumn(responseList, rankings, "", "", ) # Index column
     addColumn(responseList, rankings, "Rank", "rank", noopFormat, true)
     addColumn(responseList, rankings, "Player", "name")
@@ -498,6 +498,7 @@ rankingsRespond = (res, specificPlayers, topNPlayers) ->
     addColumn(responseList, rankings, "Longest Win Streak", "longestWinStreak", gamesFormat)
     addColumn(responseList, rankings, "Longest Lose Streak", "longestLoseStreak", gamesFormat)
 
+    responseList = ['```', responseList..., '```']
     res.send responseList.join('\n')
 
 rankingsForPlayersRespond = (res) ->
