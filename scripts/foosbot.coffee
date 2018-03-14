@@ -813,10 +813,10 @@ letsGoRespond = (res) ->
 
 
 sendStatsToInfluxDB = (newRankings, res) ->
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
     # Allow errors to happen, it's not a big deal if stats don't get sent out
     try
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
         influx = new Influx.InfluxDB({
             host: process.env.INFLUX_DB_HOST,
             port: process.env.INFLUX_DB_PORT,
@@ -844,8 +844,6 @@ sendStatsToInfluxDB = (newRankings, res) ->
             # InfluxDB also can't accept multiple points per measurement 
             influx.writePoints([point])
 
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'
-
     catch err
         msg = "Failed to upload stats to InfluxDB! Error:\n#{err}"
         
@@ -853,6 +851,8 @@ sendStatsToInfluxDB = (newRankings, res) ->
             console.log(msg)
         else
             res.send msg
+
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'
 
 
 finishGameRespond = (res) ->
@@ -995,8 +995,9 @@ finishGameRespond = (res) ->
     # Get the new rankings
     newRankings = getRankings()
 
-    # Send data to influxdb
-    sendStatsToInfluxDB(newRankings, res)
+    # Send data to influxdb if configured
+    if process.env.INFLUX_DB_ENABLED == 'Y'
+        sendStatsToInfluxDB(newRankings, res)
 
     # Show changed rankings since last time
     finishedGamesMsg.push(getChangedRankings(res, newRankings, t1p1, t1p2, t2p1, t2p2))
