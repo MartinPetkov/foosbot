@@ -21,6 +21,7 @@
     "hubot-slack": "^4.4.0",
     "influx": "^5.0.7",
     "node-schedule": "^1.2.5",
+    "npm": "^5.7.1",
     "trueskill": "0.0.2"
   },
   "engines": {

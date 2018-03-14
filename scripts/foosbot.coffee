@@ -177,8 +177,9 @@ _SHAME_MESSAGES = [
     "Are you /really/ sure you want to keep playing today?",
 ]
 _DEFAULT_SHAME_MESSAGE = "Maximum slack level reached, HR has been notified"
+_MAXIMUM_SLACK_LEVEL = 10
 getShameMsg = (res, player, timesPlayed) ->
-    shameMsg = if timesPlayed >= 10 then _DEFAULT_SHAME_MESSAGE else res.random _SHAME_MESSAGES
+    shameMsg = if timesPlayed >= _MAXIMUM_SLACK_LEVEL then _DEFAULT_SHAME_MESSAGE else res.random _SHAME_MESSAGES
     return "@#{player} #{shameMsg}"
 
 # Store shame
@@ -336,10 +337,12 @@ initOrRetrievePlayerStat = (stats, playerName) ->
         "longestLoseStreak": 0,
     }
 
-getStats = () ->
+getStats = (gamesToProcess) ->
+    tmpGamesToProcess = if isUndefined(gamesToProcess) then finishedGames else gamesToProcess
+
     # Return stats for all players, which is a map from player name to object with games played, games won, and win percentage
     stats = {}
-    for finishedGame in finishedGames
+    for finishedGame in tmpGamesToProcess
         t1p1 = finishedGame['team1']['player1']
         t1p2 = finishedGame['team1']['player2']
         t2p1 = finishedGame['team2']['player1']
@@ -812,7 +815,7 @@ letsGoRespond = (res) ->
     res.send "#{playersStr} let's go"
 
 
-sendStatsToInfluxDB = (newRankings, res) ->
+sendStatsToInfluxDB = (newRankings, res, timestamp) ->
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
     # Allow errors to happen, it's not a big deal if stats don't get sent out
@@ -832,6 +835,10 @@ sendStatsToInfluxDB = (newRankings, res) ->
                 tags: { 'name': "#{newRankings[player]['name']}" }
                 fields: newRankings[player],
             }
+
+            # Possibly add a custom timestamp (i.e. when recreating old games)
+            if !(isUndefined(timestamp))
+                point['timestamp'] = timestamp
 
             # This field is an array
             # InfluxDB has never heard of arrays and panics when it sees one
@@ -854,6 +861,21 @@ sendStatsToInfluxDB = (newRankings, res) ->
 
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'
 
+
+uploadOldRankings = (res) ->
+    numFinishedGames = finishedGames.length
+    for v, i in finishedGames
+        oldStats = getStats(finishedGames[..i])
+        oldRankings = getRankings(oldStats)
+
+        # Have to fake the times, since they don't get tracked
+        fakeTimestamp = new Date()
+        fakeTimestamp.setHours(fakeTimestamp.getHours() - (5 * (numFinishedGames - i - 1)))
+        console.log(fakeTimestamp.toLocaleString())
+
+        sendStatsToInfluxDB(oldRankings, undefined, fakeTimestamp)
+
+    res.send('Old rankings uploaded')
 
 finishGameRespond = (res) ->
     if games.length <= 0
@@ -2030,3 +2052,4 @@ module.exports = (robot) ->
     robot.respond /the rules/i, theRulesRespond
     robot.respond /tip/i, tipRespond
     schedule.scheduleJob "0 30 11 * * 1-5", tipOfTheDaySend(robot)
+    robot.respond /upload old rankings to influx/, uploadOldRankings
