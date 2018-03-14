@@ -878,9 +878,6 @@ uploadOldRankings = (res) ->
 
         sendStatsToInfluxDB(oldRankings, undefined, fakeTimestamp)
 
-        # Sleep for a bit to avoid opening up too many sockets
-        sleep 5000
-
     res.send('Old rankings uploaded')
 
 finishGameRespond = (res) ->
