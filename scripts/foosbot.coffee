@@ -861,6 +861,9 @@ sendStatsToInfluxDB = (newRankings, res, timestamp) ->
 
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'
 
+sleep = (ms) ->
+    start = new Date().getTime()
+    continue while new Date().getTime() - start < ms
 
 uploadOldRankings = (res) ->
     numFinishedGames = finishedGames.length
@@ -874,6 +877,9 @@ uploadOldRankings = (res) ->
         console.log(fakeTimestamp.toLocaleString())
 
         sendStatsToInfluxDB(oldRankings, undefined, fakeTimestamp)
+
+        # Sleep for a bit to avoid opening up too many sockets
+        sleep 5000
 
     res.send('Old rankings uploaded')
 
