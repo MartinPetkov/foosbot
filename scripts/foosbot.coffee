@@ -62,6 +62,7 @@
 fs = require 'fs'
 ts = require 'trueskill'
 schedule = require 'node-schedule'
+Influx = require('influx')
 
 # Must be a power of 2
 _DEFAULT_TOURNAMENT_SIZE = 16
@@ -318,7 +319,7 @@ findPeopleForGameRespond = (res, n) ->
     # Ask @all who's up for a game, and announce who's currently part of the nth game
     currentPlayers = currentPlayers.join(', ')
 
-    res.send "@all Who's up for a game? #{gameStr} has #{spotsLeft} spots, current players are #{currentPlayers}"
+    res.send "@here Who's up for a game? #{gameStr} has #{spotsLeft} spots, current players are #{currentPlayers}"
 
 initOrRetrievePlayerStat = (stats, playerName) ->
     if playerName of stats
@@ -395,7 +396,7 @@ gamesFormat = (str) -> return "#{str} game#{if str == 1 then '' else 's'}"
 streakFormat = (str) ->
     winning = str > 0
     gameStreak = if winning then str else -str
-    return "#{if winning then ':fire:' else ':poop:'} #{gameStreak} #{if winning then 'won' else 'lost'}"
+    return "#{if winning then '🔥' else '💩'} #{gameStreak} #{if winning then 'won' else 'lost'}"
 
 addColumn = (lines, stats, header, field, formatFunc, isFirstColumn) ->
     isIndexColumn = !field
@@ -518,10 +519,8 @@ resetPreviousRankings = (res) ->
     savePreviousRanks()
 
 
-getChangedRankings = (res, p1, p2, p3, p4) ->
+getChangedRankings = (res, rankings, p1, p2, p3, p4) ->
     rankChanges = "\nRank changes:\n"
-
-    rankings = getRankings()
 
     for p in [p1,p2,p3,p4]
         curRank = getRank(p, rankings) + 1
@@ -813,6 +812,49 @@ letsGoRespond = (res) ->
     res.send "#{playersStr} let's go"
 
 
+sendStatsToInfluxDB = (newRankings, res) ->
+    # Allow errors to happen, it's not a big deal if stats don't get sent out
+    try
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
+        influx = new Influx.InfluxDB({
+            host: process.env.INFLUX_DB_HOST,
+            port: process.env.INFLUX_DB_PORT,
+            database: process.env.INFLUX_DB_DATABASE,
+            username: process.env.INFLUX_DB_USERNAME,
+            password: process.env.INFLUX_DB_PASSWORD,
+            protocol: 'https',
+        });
+
+        for player of newRankings
+            point = {
+                measurement: "foosballRankings",
+                tags: { 'name': "#{newRankings[player]['name']}" }
+                fields: newRankings[player],
+            }
+
+            # This field is an array
+            # InfluxDB has never heard of arrays and panics when it sees one
+            delete point['fields']['skill']
+
+            # Grafana has very weak post-processing capabilities, so just
+            # give it the emoji-formatted streak string to begin with
+            point['fields']['streak'] = streakFormat(point['fields']['streak'])
+
+            # InfluxDB also can't accept multiple points per measurement 
+            influx.writePoints([point])
+
+            process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'
+
+    catch err
+        msg = "Failed to upload stats to InfluxDB! Error:\n#{err}"
+        
+        if isUndefined(res)
+            console.log(msg)
+        else
+            res.send msg
+
+
 finishGameRespond = (res) ->
     if games.length <= 0
         res.send "No games are being played at the moment"
@@ -942,18 +984,27 @@ finishGameRespond = (res) ->
             finishedGamesMsg.push("@#{matchWinner} won #{matchWinAmount}ƒ¢!")
 
 
-    saveAccounts()
-    saveFinishedGames()
-
-    # Show changed rankings since last time
-    finishedGamesMsg.push(getChangedRankings(res, t1p1, t1p2, t2p1, t2p2))
-
     # Remove the game from the list
     games.splice(0,1)
+
+    # Save the variables
+    saveAccounts()
+    saveFinishedGames()
     saveGames()
 
+    # Get the new rankings
+    newRankings = getRankings()
+
+    # Send data to influxdb
+    sendStatsToInfluxDB(newRankings, res)
+
+    # Show changed rankings since last time
+    finishedGamesMsg.push(getChangedRankings(res, newRankings, t1p1, t1p2, t2p1, t2p2))
+
+    # Send the message
     res.send finishedGamesMsg.join('\n')
 
+    # Shame those that got shut out
     if matchLosersScore == 0
         res.send "https://media.giphy.com/media/gtakVlnStZUbe/giphy.gif"
 
@@ -1171,12 +1222,17 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
                 score += process.env.SHUTOUT_EMOJI
             else if otherTeamScore == 8
                 score += process.env.CLOSE_WIN_EMOJI
+            else
+                score += '\t'
 
-            score += '\t'
         else if thisTeamScore == 0
-            score = process.env.NO_GOALS_EMOJI + '\t'
+            score = process.env.NO_GOALS_EMOJI
         else if thisTeamScore == 8
-            score = process.env.CLOSE_LOSS_EMOJI + '\t'
+            score = process.env.CLOSE_LOSS_EMOJI
+        else
+            score += '\t'
+        
+        score += '\t'
 
         score += "#{thisTeamScore}-#{otherTeamScore}"
 
@@ -1192,6 +1248,8 @@ historyRespond = (res, me, numPastGames, playerName, otherPlayerName, rivals) ->
         strGames += "\n#{score}\t#{teams[0]} and #{teams[1]} vs. #{teams[2]} and #{teams[3]}"
 
     strGames = title + "\nK-D ratio: #{gamesWon}-#{gamesFound-gamesWon}\n" + strGames
+
+    strGames = '```' + strGames + '```'
 
     res.send strGames
 
@@ -1452,7 +1510,7 @@ showTournamentRespond = (res) ->
         else
             winrar = "#{finalGame['team2']}"
 
-    strTree[startingLine] += "--- :trophy: #{winrar}"
+    strTree[startingLine] += "--- 🏆 #{winrar}"
 
     res.send strTree.join('\n')
 
@@ -1607,7 +1665,7 @@ finishTournamentGameRespond = (res) ->
     if game['nextGame'] == false
         # If the game finished is the final game, print out a congratulatory message and fanfare, crowning the champions
         res.send "Tournament is over! Congratulations to the champions!"
-        res.send ":trophy::trophy::trophy: #{winrar} :trophy::trophy::trophy:"
+        res.send "🏆🏆🏆 #{winrar} 🏆🏆🏆"
 
     else
         # Add the team to the next game
@@ -1848,9 +1906,10 @@ buyRespond = (robot) ->
             return
 
         accounts[buyer] -= cost
-        res.send "You bought a #{good} for #{cost}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
 
         saveAccounts()
+
+        res.send "You bought a #{good} for #{cost}ƒ¢! Your balance is now: #{accounts[buyer]}ƒ¢"
 
         res.send "Here is your #{good}, @#{recipient}..."
 
@@ -1914,7 +1973,7 @@ module.exports = (robot) ->
     robot.respond /start game$/i, startGameRespond
     robot.respond /start game(?: with)?(( \w+){1,3})$/i, startGameWithPlayersRespond
     robot.respond /find people$|find players$/i, findPeopleForNextGameRespond
-    robot.respond /i'm in/i, joinNextGameRespond
+    robot.respond /i.?m in/i, joinNextGameRespond
     robot.respond /join game$/i, joinNextGameRespond
     robot.respond /add (\w+)$/i, addToNextGameRespond
     robot.respond /call (\w+)$/i, callToNextGameRespond
