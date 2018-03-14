@@ -815,7 +815,32 @@ letsGoRespond = (res) ->
     res.send "#{playersStr} let's go"
 
 
-sendStatsToInfluxDB = (newRankings, res, timestamp) ->
+formatRankingsAsPoints = (rankings, timestamp) ->
+    points = []
+    for player of rankings
+        point = {
+            measurement: "foosballRankings",
+            tags: { 'name': "#{rankings[player]['name']}" }
+            fields: rankings[player],
+        }
+
+        # Possibly add a custom timestamp (i.e. when recreating old games)
+        if !(isUndefined(timestamp))
+            point['timestamp'] = timestamp
+
+        # This field is an array
+        # InfluxDB has never heard of arrays and panics when it sees one
+        delete point['fields']['skill']
+
+        # Grafana has very weak post-processing capabilities, so just
+        # give it the emoji-formatted streak string to begin with
+        point['fields']['streak'] = streakFormat(point['fields']['streak'])
+
+        points.push(point)
+
+    return points
+
+sendStatsToInfluxDB = (points, res) ->
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
     # Allow errors to happen, it's not a big deal if stats don't get sent out
@@ -829,27 +854,7 @@ sendStatsToInfluxDB = (newRankings, res, timestamp) ->
             protocol: 'https',
         });
 
-        for player of newRankings
-            point = {
-                measurement: "foosballRankings",
-                tags: { 'name': "#{newRankings[player]['name']}" }
-                fields: newRankings[player],
-            }
-
-            # Possibly add a custom timestamp (i.e. when recreating old games)
-            if !(isUndefined(timestamp))
-                point['timestamp'] = timestamp
-
-            # This field is an array
-            # InfluxDB has never heard of arrays and panics when it sees one
-            delete point['fields']['skill']
-
-            # Grafana has very weak post-processing capabilities, so just
-            # give it the emoji-formatted streak string to begin with
-            point['fields']['streak'] = streakFormat(point['fields']['streak'])
-
-            # InfluxDB also can't accept multiple points per measurement 
-            influx.writePoints([point])
+        influx.writePoints(points)
 
     catch err
         msg = "Failed to upload stats to InfluxDB! Error:\n#{err}"
@@ -867,6 +872,7 @@ sleep = (ms) ->
 
 uploadOldRankings = (res) ->
     numFinishedGames = finishedGames.length
+    allPoints = []
     for v, i in finishedGames
         oldStats = getStats(finishedGames[..i])
         oldRankings = getRankings(oldStats)
@@ -876,8 +882,13 @@ uploadOldRankings = (res) ->
         fakeTimestamp.setHours(fakeTimestamp.getHours() - (5 * (numFinishedGames - i - 1)))
         console.log(fakeTimestamp.toLocaleString())
 
-        sendStatsToInfluxDB(oldRankings, undefined, fakeTimestamp)
+        # Save this set of points
+        points = formatRankingsAsPoints(oldRankings, fakeTimestamp)
+        allPoints = allPoints.concat(points)
 
+    sendStatsToInfluxDB(allPoints)
+
+    console.log('Old rankings uploaded')
     res.send('Old rankings uploaded')
 
 finishGameRespond = (res) ->
@@ -1022,7 +1033,8 @@ finishGameRespond = (res) ->
 
     # Send data to influxdb if configured
     if process.env.INFLUX_DB_ENABLED == 'Y'
-        sendStatsToInfluxDB(newRankings, res)
+        points = formatRankingsAsPoints(newRankings)
+        sendStatsToInfluxDB(points, res)
 
     # Show changed rankings since last time
     finishedGamesMsg.push(getChangedRankings(res, newRankings, t1p1, t1p2, t2p1, t2p2))
