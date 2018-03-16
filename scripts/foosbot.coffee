@@ -840,6 +840,32 @@ formatRankingsAsPoints = (rankings, timestamp) ->
 
     return points
 
+
+formatFinishedGameAsPoint = (finishedGame, timestamp) ->
+    point = {
+        measurement: "foosballFinishedGames",
+        tags: {
+            't1p1name': finishedGame['team1']['player1'],
+            't1p2name': finishedGame['team1']['player2'],
+            't2p1name': finishedGame['team2']['player1'],
+            't2p2name': finishedGame['team2']['player2']
+        }
+        fields: {
+            't1p1': finishedGame['team1']['player1'],
+            't1p2': finishedGame['team1']['player2'],
+            't1score': finishedGame['team1']['score'],
+            't2p1': finishedGame['team2']['player1'],
+            't2p2': finishedGame['team2']['player2'],
+            't2score': finishedGame['team2']['score']
+        }
+    }
+
+    # Possibly add a custom timestamp (i.e. when recreating old games)
+    if !(isUndefined(timestamp))
+        point['timestamp'] = timestamp
+
+    return point
+
 sendStatsToInfluxDB = (points, res) ->
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
@@ -890,6 +916,28 @@ uploadOldRankings = (res) ->
 
     console.log('Old rankings uploaded')
     res.send('Old rankings uploaded')
+
+
+uploadOldFinishedGames = (res) ->
+    numFinishedGames = finishedGames.length
+    allPoints = []
+    for v, i in finishedGames
+        oldFinishedGame = v
+
+        # Have to fake the times, since they don't get tracked
+        fakeTimestamp = new Date()
+        fakeTimestamp.setHours(fakeTimestamp.getHours() - (5 * (numFinishedGames - i - 1)))
+        console.log(fakeTimestamp.toLocaleString())
+
+        # Save this set of points
+        point = formatFinishedGameAsPoint(oldFinishedGame, fakeTimestamp)
+        allPoints.push(point)
+
+    sendStatsToInfluxDB(allPoints)
+
+    console.log('Old finished games uploaded')
+    res.send('Old finished games uploaded')
+
 
 finishGameRespond = (res) ->
     if games.length <= 0
@@ -1034,6 +1082,7 @@ finishGameRespond = (res) ->
     # Send data to influxdb if configured
     if process.env.INFLUX_DB_ENABLED == 'Y'
         points = formatRankingsAsPoints(newRankings)
+        points.push(formatFinishedGameAsPoint(resultDetails))
         sendStatsToInfluxDB(points, res)
 
     # Show changed rankings since last time
@@ -2068,3 +2117,4 @@ module.exports = (robot) ->
     robot.respond /tip/i, tipRespond
     schedule.scheduleJob "0 30 11 * * 1-5", tipOfTheDaySend(robot)
     robot.respond /upload old rankings to influx/, uploadOldRankings
+    robot.respond /upload old finished games to influx/, uploadOldFinishedGames
