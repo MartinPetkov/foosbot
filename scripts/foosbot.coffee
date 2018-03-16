@@ -845,18 +845,23 @@ formatFinishedGameAsPoint = (finishedGame, timestamp) ->
     point = {
         measurement: "foosballFinishedGames",
         tags: {
+            'team1': "#{finishedGame['team1']['player1']}-#{finishedGame['team1']['player2']}",
             't1p1name': finishedGame['team1']['player1'],
             't1p2name': finishedGame['team1']['player2'],
+            'team2': "#{finishedGame['team2']['player1']}-#{finishedGame['team2']['player2']}",
             't2p1name': finishedGame['team2']['player1'],
             't2p2name': finishedGame['team2']['player2']
         }
         fields: {
+            'team1': "#{finishedGame['team1']['player1']}-#{finishedGame['team1']['player2']}",
             't1p1': finishedGame['team1']['player1'],
             't1p2': finishedGame['team1']['player2'],
             't1score': finishedGame['team1']['score'],
+            'team2': "#{finishedGame['team2']['player1']}-#{finishedGame['team2']['player2']}",
             't2p1': finishedGame['team2']['player1'],
             't2p2': finishedGame['team2']['player2'],
-            't2score': finishedGame['team2']['score']
+            't2score': finishedGame['team2']['score'],
+            'score': "#{finishedGame['team1']['score']}-#{finishedGame['team2']['score']}"
         }
     }
 
